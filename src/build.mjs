@@ -704,6 +704,7 @@ ${SITEMAP.map(u => `<url><loc>${u.loc}</loc><lastmod>${TODAY}</lastmod>${u.img.m
 write('sitemap.xml', smap);
 write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
 write('google114b1fb682c7dd8a.html', 'google-site-verification: google114b1fb682c7dd8a.html');
+write('version.txt', 'Super Mandala Lab build ' + new Date().toISOString() + '\n');
 write('site.webmanifest', JSON.stringify({
   name: BRAND, short_name: 'Mandala Lab', start_url: '/', display: 'standalone', background_color: '#fbf8f3', theme_color: '#fbf8f3',
   icons: [{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' }, { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
