@@ -2,7 +2,7 @@
 
 The site is a static build served by the Cloudflare Worker `supermandalalab`, using static assets on the free tier, at https://supermandalalab.com.
 
-The GitHub repo is the source of truth. It is private, under Charles's account. Cloudflare's Git integration (Workers Builds) watches the `main` branch. Each push to `main` runs `npx wrangler deploy`, which uploads `dist/` and goes live within a minute or two. No build runs on Cloudflare, because `dist/` is built locally and committed.
+The GitHub repo https://github.com/charleswest775/supermandalalab is the source of truth. It is **public**, so never commit anything private: no tokens or keys, no account or zone ids, no personal email (commits use the GitHub noreply address), and no task notes. Cloudflare's Git integration (Workers Builds) watches the `main` branch. Each push to `main` runs `npx wrangler deploy`, which uploads `dist/` and goes live within a minute or two. No build runs on Cloudflare, because `dist/` is built locally and committed.
 
 ## Publishing a change
 
