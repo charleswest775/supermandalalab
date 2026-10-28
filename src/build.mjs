@@ -9,6 +9,7 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import {
   TEMPLATES, templateDesign, designSVG, randomDesign, buildPaths, pdfContent, pdfFile, compactDesign, SHAPES, escapeXML, simplify,
+  emptyDesign, normalizeDesign, ringLayer, cutOutlines, cutSVG, toDXF, boundsOf, countPieces,
 } from './js/core.js';
 import { FAQ, ARTICLES } from './content.mjs';
 
@@ -21,6 +22,7 @@ const deps = process.argv[2] ? path.resolve(process.argv[2])
 const require = createRequire(path.join(deps, 'package.json'));
 const esbuild = require('esbuild');
 const { Resvg } = require('@resvg/resvg-js');
+const ClipperLib = require('clipper-lib');
 
 const SITE = 'https://supermandalalab.com';
 const BRAND = 'Super Mandala Lab';
@@ -126,6 +128,7 @@ function editLink(d) {
 const NAV = [
   ['/', 'Maker'],
   ['/templates/', 'Templates'],
+  ['/sacred-geometry/', 'Sacred geometry'],
   ['/coloring-pages/', 'Coloring pages'],
   ['/svg-for-cricut/', 'SVG for Cricut'],
   ['/dxf-for-laser-and-plasma/', 'DXF for laser'],
@@ -186,7 +189,7 @@ ${o.body}
 <div class="cols">
 <div><h4>${BRAND}</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
 <div><h4>Make</h4><ul><li><a href="/">Mandala maker</a></li><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li></ul></div>
-<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
+<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
 <div><h4>Learn</h4><ul>${ARTICLES.map(a => `<li><a href="/learn/${a.slug}/">${esc(a.short)}</a></li>`).join('')}<li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
 </div>
 <p class="fine">Made in Reno, Nevada by <a href="https://superfablab.com">SuperFabLab</a>, a metal fabrication studio. © 2026 ${BRAND}.</p>
@@ -237,15 +240,23 @@ function maker(o = {}) {
     <label class="mk-row"><span>Background</span><input type="color" id="mk-bgc" value="#ffffff"></label>
     <label class="mk-check"><input type="checkbox" id="mk-guides-on" checked> Show slice guides</label>
     <div class="mk-group">
+      <h3>Open center for words</h3>
+      <label class="mk-row"><span>Opening</span><input type="range" id="mk-open" min="0" max="340" step="2" value="0"><output id="mk-open-out">Off</output></label>
+      <label class="mk-row mk-text-row"><span>Words</span><input type="text" id="mk-text1" maxlength="30" placeholder="A name or a word" autocomplete="off"></label>
+      <label class="mk-row mk-text-row"><span>Second line</span><input type="text" id="mk-text2" maxlength="30" placeholder="Optional, like a date" autocomplete="off"></label>
+      <label class="mk-row mk-text-row"><span>Lettering</span><select id="mk-font"><option value="serif">Serif</option><option value="sans">Sans serif</option></select></label>
+      <p id="mk-open-note">Slide to leave the middle empty for a name, a word or a date.</p>
+    </div>
+    <div class="mk-group">
       <h3>Start from something</h3>
       <select id="mk-template" aria-label="Templates"></select>
-      <div class="mk-inline"><select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option></select><button type="button" id="mk-random">Surprise me</button></div>
+      <div class="mk-inline"><select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option><option value="sacred">Sacred geometry</option></select><button type="button" id="mk-random">Surprise me</button></div>
       <p>Templates and Surprise me replace the current design. Undo brings it back.</p>
     </div>
   </div>
   <div class="mk-tab-body" data-panel="shapes" hidden>
-    <div class="mk-inline"><select id="mk-add-shape" aria-label="Shape to add"></select><button type="button" id="mk-add" class="mk-primary">Add ring</button></div>
-    <p class="mk-hint">Each ring repeats a shape around the circle. Tap a layer to change its size, distance, twist and fill.</p>
+    <div class="mk-inline"><select id="mk-add-shape" aria-label="Shape to add"></select><button type="button" id="mk-add" class="mk-primary">Add</button></div>
+    <p class="mk-hint">Each ring repeats a shape around the circle. Sacred geometry figures, like the Flower of Life and Metatron's Cube, sit at the center. Tap a layer to change its size, distance, twist and fill.</p>
     <ul class="mk-layers" id="mk-layers"></ul>
   </div>
   <div class="mk-tab-body" data-panel="download" hidden>
@@ -268,6 +279,14 @@ function maker(o = {}) {
       <div class="mk-inline" data-cut-for="mk-dxf"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Width</span><input type="number" id="mk-dxf-size" value="12" min="0.5" step="0.5"></label><select id="mk-dxf-unit" aria-label="Units"><option value="in">in</option><option value="mm">mm</option></select></div>
       <label class="mk-row" data-cut-for="mk-dxf" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-dxf-thick" value="0.08" min="0.001" step="0.01"></label>
       <button type="button" id="mk-dl-dxf" class="mk-primary">Download DXF</button>
+    </div>
+    <div class="mk-dl"><h3>Sticker <small>die-cut, print then cut</small></h3>
+      <div class="mk-inline"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Size</span><input type="number" id="mk-st-size" value="3" min="0.5" step="0.25"></label><select id="mk-st-unit" aria-label="Sticker units"><option value="in">in</option><option value="mm">mm</option></select></div>
+      <label class="mk-row" style="grid-template-columns:auto 1fr"><span>Look</span><select id="mk-st-look"><option value="mine">My colors</option><option value="night">Night glow (gold on dark)</option></select></label>
+      <label class="mk-row" style="grid-template-columns:auto 1fr"><span>White border</span><input type="number" id="mk-st-border" value="0.1" min="0" step="0.05"></label>
+      <label class="mk-check"><input type="checkbox" id="mk-st-plain"> Disc only, with no border or cut line</label>
+      <div class="mk-inline"><button type="button" id="mk-dl-st-svg" class="mk-primary">Sticker SVG</button><button type="button" id="mk-dl-st-png">Sticker PNG</button></div>
+      <p class="mk-hint" style="margin:0">The SVG has bleed and a cut line on its own CutContour layer. The PNG is 300 dpi and transparent outside the border, for sticker printers.</p>
     </div>
     <div class="mk-dl"><h3>Share</h3><p class="mk-hint" style="margin:0">Copy a link that opens this mandala for anyone.</p><button type="button" id="mk-share">Copy share link</button></div>
   </div>
@@ -297,26 +316,37 @@ for (const t of TEMPLATES) {
 const homeDesign = templateDesign('lotus-mandala');
 write('img/og/home.png', png(socialCard(templateDesign('intricate-mandala'), 'Free Mandala Maker', 'SVG, DXF, PDF and PNG. No signup.'), 1200));
 
-const templateTiles = (exclude) => `<ul class="tiles">${TEMPLATES.filter(t => t.slug !== exclude).map(t => `<li><a href="/templates/${t.slug}/"><img src="/img/templates/${t.slug}.svg" alt="${esc(t.name)} preview" width="300" height="300" loading="lazy"><span>${esc(t.name)}</span></a></li>`).join('')}</ul>`;
+const SACRED_TEMPLATES = TEMPLATES.filter(t => t.sacred);
+const templateTiles = (exclude, list = TEMPLATES) => `<ul class="tiles">${list.filter(t => t.slug !== exclude).map(t => `<li><a href="/templates/${t.slug}/"><img src="/img/templates/${t.slug}.svg" alt="${esc(t.name)} preview" width="300" height="300" loading="lazy"><span>${esc(t.name)}</span></a></li>`).join('')}</ul>`;
 
 // ---------- coloring pages ----------
 const LEVELS = [
   { key: 'easy', name: 'Easy', title: 'Easy Mandala Coloring Pages', blurb: 'Big shapes and thick lines for kids, beginners and relaxed coloring.', seeds: [11, 23, 37, 41, 59, 61, 79, 83] },
   { key: 'medium', name: 'Medium', title: 'Mandala Coloring Pages', blurb: 'A balance of detail and space, for an afternoon of coloring.', seeds: [101, 131, 151, 181, 191, 211, 241, 271] },
   { key: 'intricate', name: 'Intricate', title: 'Intricate Mandala Coloring Pages for Adults', blurb: 'Fine lines and dense rings for detailed adult coloring.', seeds: [307, 331, 347, 367, 389, 409, 431, 457] },
+  { key: 'sacred-geometry', name: 'Sacred geometry', level: 'sacred', title: 'Sacred Geometry Coloring Pages', blurb: 'The Flower of Life, Metatron\'s Cube, golden spirals and more at the center, ringed with petals and arches.', seeds: [503, 521, 547, 563, 587, 601, 619, 643],
+    figs: ['flower', 'seed', 'metatron', 'flower', 'spiral', 'rose', 'seed', 'stars'] },
 ];
 const SHAPE_WORD = { petal: 'Petal', leaf: 'Leaf', drop: 'Teardrop', dot: 'Dot', diamond: 'Diamond', spike: 'Star', arch: 'Arch', heart: 'Heart', square: 'Square', line: 'Sunburst', circle: 'Ring', scallop: 'Scallop', zigzag: 'Star', wave: 'Wave' };
 const coloring = [];
 for (const lv of LEVELS) {
   lv.seeds.forEach((seed, i) => {
-    const d = randomDesign(seed * 7919 + 13, lv.key);
+    const d = randomDesign(seed * 7919 + 13, lv.level || lv.key);
+    if (lv.figs) d.layers[0].shape = lv.figs[i]; // one page per well-known figure, with the most searched ones first
     const counts = {};
     for (const l of d.layers) if (l.kind === 'ring' && l.shape !== 'circle') counts[l.shape] = (counts[l.shape] || 0) + 1;
     const main = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'petal';
-    const word = SHAPE_WORD[main];
     const num = String(i + 1).padStart(2, '0');
-    const name = `${lv.name === 'Medium' ? '' : lv.name + ' '}${word} Mandala ${num}`.trim();
-    const slug = `${word.toLowerCase()}-mandala-${num}`;
+    let name, slug;
+    if (lv.level === 'sacred') {
+      const fig = SHAPES[d.layers[0].shape].label; // the figure at the center names the page
+      name = `${fig} Mandala ${num}`;
+      slug = `${fig.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-')}-mandala-${num}`;
+    } else {
+      const word = SHAPE_WORD[main];
+      name = `${lv.name === 'Medium' ? '' : lv.name + ' '}${word} Mandala ${num}`.trim();
+      slug = `${word.toLowerCase()}-mandala-${num}`;
+    }
     coloring.push({ d, lv, name, slug, n: d.n });
   });
 }
@@ -337,14 +367,14 @@ page({
   path: '/',
   title: 'Free Mandala Maker: Create and Download Mandalas as SVG, PNG, PDF and DXF',
   ogTitle: 'Free Mandala Maker',
-  description: 'Design your own mandala online in minutes. Free, no signup, no watermark. Export print-ready coloring pages or cut-ready SVG and DXF files for Cricut, laser and plasma.',
+  description: 'Design your own mandala or sacred geometry online in minutes. Free, no signup, no watermark. Export coloring pages, stickers, or cut-ready SVG and DXF for Cricut, laser and plasma.',
   maker: true,
   schema: [
     {
       '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Super Mandala Lab Mandala Maker', url: SITE + '/',
       applicationCategory: 'DesignApplication', operatingSystem: 'Any', browserRequirements: 'Requires a modern web browser with JavaScript',
       isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      featureList: ['Symmetry from 4 to 36 slices', 'Freehand drawing with mirror symmetry', 'Rings of petals, dots, scallops and more', 'PNG export', 'PDF coloring pages', 'Cut-ready SVG for Cricut', 'DXF for laser and plasma cutting'],
+      featureList: ['Symmetry from 4 to 36 slices', 'Freehand drawing with mirror symmetry', 'Rings of petals, dots, scallops and more', 'Sacred geometry: Flower of Life, Seed of Life, Metatron\'s Cube, golden spirals, mystic rose', 'Open center for a name or date', 'PNG export', 'PDF coloring pages', 'Die-cut sticker SVG with CutContour line', 'Cut-ready SVG for Cricut', 'DXF for laser and plasma cutting'],
       image: SITE + '/img/og/home.png', publisher: ORG,
     },
     ORG,
@@ -359,6 +389,10 @@ page({
 </div>
 ${maker()}
 <div class="wrap section">
+<h2>Sacred geometry, built in</h2>
+<p>Add the Flower of Life, the Seed of Life, Metatron's Cube, golden spirals, a mystic rose and more as a single layer, then ring it with petals and arches. Every figure is drawn from true circles and straight lines, so it prints crisply and cuts cleanly. See the <a href="/sacred-geometry/">sacred geometry generator and free downloads</a>.</p>
+${templateTiles(null, SACRED_TEMPLATES)}
+
 <h2>How it works</h2>
 <ol class="steps">
 <li><strong>Pick your symmetry.</strong> Choose how many slices, from 4 to 36, and whether each slice mirrors.</li>
@@ -380,6 +414,7 @@ ${templateTiles()}
 <li>Cricut and Silhouette projects, including layered paper mandalas</li>
 <li>Laser-cut wood and acrylic, and plasma-cut steel</li>
 <li>Stencils, tattoo sketches and embroidery patterns</li>
+<li>Round stickers and name gifts, with words in an open center</li>
 </ul>
 </div>
 <div>
@@ -392,6 +427,8 @@ ${templateTiles()}
 <li>Saves in your browser, so you can come back to your work</li>
 <li>Works with a mouse, a touch screen or a stylus</li>
 <li>Share links that open your mandala for anyone</li>
+<li>An open center for a name, a word or a date, with the opening's size shown for print and stickers</li>
+<li>Die-cut sticker files with bleed and a CutContour cut line</li>
 </ul>
 </div>
 </div>
@@ -404,6 +441,7 @@ ${templateTiles()}
 <tr><td>PDF</td><td>Printing <a href="/coloring-page-maker/">coloring pages</a> at US Letter or A4 size</td></tr>
 <tr><td>SVG</td><td>Cricut, Silhouette, vinyl, and editing in Illustrator or Inkscape. <a href="/svg-for-cricut/">Cut-ready SVG guide</a></td></tr>
 <tr><td>DXF</td><td>Laser cutters, CNC routers and plasma tables, at real size in inches or millimeters. <a href="/dxf-for-laser-and-plasma/">DXF guide</a></td></tr>
+<tr><td>Sticker</td><td>Round die-cut stickers: an SVG with white border, bleed and a CutContour cut line for print then cut, or a 300 dpi PNG for sticker printers</td></tr>
 </tbody>
 </table>
 
@@ -451,7 +489,9 @@ const exportPages = [
 <li><strong>Test on scrap.</strong> Intricate mandalas push a cutting mat's grip. Cut a small version first.</li>
 <li><strong>Use a stencil for paint.</strong> The Stencil option cuts the design out of a solid disc, which works for stencil vinyl and painting. Closed areas fall out of a stencil, so the maker counts them for you.</li>
 </ul>
-<p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a> or the <a href="/templates/geometric-mandala/">geometric mandala</a> template.</p>`,
+<h2>Print then cut stickers</h2>
+<p>In Download, the Sticker option makes a round die-cut sticker: your mandala on a disc, a white border, bleed beyond the cut, and the cut line as a magenta hairline on its own layer named CutContour. Print then cut workflows and many sticker printers look for that layer. Or download the sticker PNG at 300 dpi for printers that trace the edge of the image. Add a name in the open center for gifts and party favors.</p>
+<p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a>, the <a href="/templates/flower-of-life-mandala/">Flower of Life</a> or the <a href="/templates/name-mandala/">name mandala</a> template.</p>`,
   },
   {
     path: '/dxf-for-laser-and-plasma/', tab: 'download', template: 'star-mandala',
@@ -533,6 +573,100 @@ ${maker({ template: p.template, tab: p.tab })}
   });
 }
 
+// Sacred geometry landing page, with free downloads of each figure on its own.
+const SG_FIGURES = [
+  { slug: 'seed-of-life', name: 'Seed of Life', shape: 'seed', v: 1, n: 6,
+    about: 'Seven equal circles: one in the middle and six around it, each passing through the center. It is the first stage of the Flower of Life.' },
+  { slug: 'flower-of-life', name: 'Flower of Life', shape: 'flower', v: 1, n: 6,
+    about: 'Nineteen overlapping circles on a six-fold grid, inside a bounding circle. The best known sacred geometry figure, found drawn on the walls of the Temple of Osiris at Abydos in Egypt.' },
+  { slug: 'flower-of-life-completed', name: 'Flower of Life, Completed Petals', shape: 'flower', v: 2, n: 6,
+    about: 'The Flower of Life with the partial circles at its edge drawn in, so every petal against the outer ring is whole.' },
+  { slug: 'fruit-of-life', name: 'Fruit of Life', shape: 'metatron', v: 3, n: 6,
+    about: 'Thirteen circles taken from the Flower of Life pattern. Join their centers and you get Metatron\'s Cube.' },
+  { slug: 'metatrons-cube', name: "Metatron's Cube", shape: 'metatron', v: 1, n: 6,
+    about: 'The 13 circles of the Fruit of Life with all 78 straight lines between their centers. The lines are said to hold flat drawings of the five Platonic solids.' },
+  { slug: 'stars-within-stars', name: 'Stars Within Stars', shape: 'stars', v: 1, n: 5,
+    about: 'A five-pointed star with smaller stars nested inside it, each turned to fit the last. Its proportions follow the golden ratio.' },
+  { slug: 'mystic-rose', name: 'Mystic Rose', shape: 'rose', v: 1, n: 12,
+    about: 'Points around a circle, each joined to every other point by a straight line. The chords weave rings of stars and curves toward the center.' },
+  { slug: 'golden-spirals', name: 'Golden Spirals', shape: 'spiral', v: 1, n: 12,
+    about: 'Spirals that grow by the golden ratio each quarter turn, crossing in opposite directions like the spirals of seeds in a sunflower head.' },
+  { slug: 'times-table-circle', name: 'Times Table Circle', shape: 'times', v: 1, n: 6,
+    about: 'Points around a circle joined by a multiplication rule. Hundreds of straight lines trace curved, cardioid-like petals.' },
+];
+const sgDesign = f => ({ ...emptyDesign(), n: f.n, w: 2.5, layers: [ringLayer(f.shape, 480, 0, 0, { mult: f.v })] });
+for (const f of SG_FIGURES) {
+  const d = sgDesign(f);
+  const base = `sacred-geometry/${f.slug}`;
+  const paths = lean(d);
+  write(`img/${base}.svg`, designSVG(d, { title: f.name, paths }));
+  write(`files/${base}.svg`, designSVG(d, { title: f.name, paths, width: '12in' }));
+  // Cut files at 12 inches wide with 0.08 inch lines, the same math as the maker.
+  const b = boundsOf(buildPaths(d).map(p => ({ ...p, w: 0 })));
+  const span = Math.max(b.x1 - b.x0, b.y1 - b.y0);
+  const weight = (0.08 * span) / (12 - 0.08);
+  const polys = cutOutlines(buildPaths(d), ClipperLib, { weight });
+  f.pieces = countPieces(polys);
+  write(`files/${base}-cut.svg`, cutSVG(polys, { physW: 12, unit: 'in' }));
+  write(`files/${base}-cut.dxf`, toDXF(polys, { unit: 'in', size: 12 }));
+  write(`files/${base}-lines.dxf`, toDXF(buildPaths(d), { unit: 'in', size: 12 }));
+  const pc = pdfContent(d, { page: 'letter', coloring: true, paths });
+  write(`files/${base}-letter.pdf`, pdfFile(pc, zlib.deflateSync(Buffer.from(pc.content), { level: 9 })));
+  f.edit = editLink(d);
+}
+console.log('Sacred geometry cut pieces:', SG_FIGURES.map(f => `${f.slug} ${f.pieces}`).join(', '));
+{
+  const faq = [
+    ['Is the sacred geometry generator free?', 'Yes. Every figure and every export is free, with no signup and no watermark, and you may sell what you make with it.'],
+    ['Can I cut the Flower of Life on a Cricut or laser?', 'Yes. Download the cut-ready SVG for Cricut or Silhouette, or the DXF for a laser, CNC router or plasma table. Every circle is merged into one connected outline at the size and line thickness you choose.'],
+    ['How do I put a name in the middle?', 'Open Design, slide Open center for words, and type a name or a date. The rings stop at the opening, and the maker shows how wide the opening will print.'],
+    ['Can I make a sticker?', 'Yes. In Download, the Sticker option makes a round die-cut sticker with a white border, bleed and a CutContour cut line, or a 300 dpi PNG for sticker printers.'],
+    ['Why does the Flower of Life need six-fold symmetry?', 'Its circles sit on a six-fold grid. Set Symmetry to 6, 12, 18 or 24 and the rings you add around it line up with its petals.'],
+  ];
+  const sgD = templateDesign('sacred-geometry-mandala');
+  write('img/og/sacred-geometry.png', png(socialCard(sgD, 'Sacred Geometry Generator', 'Flower of Life, Metatron\'s Cube and more'), 1200));
+  page({
+    path: '/sacred-geometry/',
+    title: "Free Sacred Geometry Generator: Flower of Life, Metatron's Cube SVG and DXF",
+    ogTitle: 'Free Sacred Geometry Generator',
+    description: "Make sacred geometry online: the Flower of Life, Seed of Life, Metatron's Cube, golden spirals and more. Free SVG, DXF, PDF and sticker downloads, no signup.",
+    maker: true, ogImage: '/img/og/sacred-geometry.png',
+    crumbs: [['/', 'Home'], ['/sacred-geometry/', 'Sacred geometry']],
+    sitemapImages: SG_FIGURES.map(f => `${SITE}/img/sacred-geometry/${f.slug}.svg`),
+    schema: [faqSchema(faq), {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Free sacred geometry downloads',
+      itemListElement: SG_FIGURES.map((f, i) => ({ '@type': 'ListItem', position: i + 1, item: {
+        '@type': 'ImageObject', name: f.name, description: f.about, contentUrl: `${SITE}/img/sacred-geometry/${f.slug}.svg`, creator: ORG, isAccessibleForFree: true,
+      } })),
+    }],
+    body: `<div class="wrap hero"><h1>Sacred Geometry Generator</h1><p class="lede">Build the Flower of Life, Metatron's Cube, golden spirals and more, ring them with petals, leave room for a name, then download them to print, cut or stick. Free, with no signup.</p></div>
+${maker({ template: 'sacred-geometry-mandala', tab: 'shapes' })}
+<div class="wrap section">
+<h2>Free sacred geometry downloads</h2>
+<p>Each figure on its own, ready to use. Cut files are 12 inches wide with 0.08 inch lines. Open one in the maker to change its size, add rings or a name.</p>
+<ul class="sg-grid">${SG_FIGURES.map(f => `<li><img src="/img/sacred-geometry/${f.slug}.svg" alt="${esc(f.name)} line art" width="300" height="300" loading="lazy"><h3>${esc(f.name)}</h3><p>${esc(f.about)}</p>
+<p class="sg-links"><a href="/files/sacred-geometry/${f.slug}.svg" download>SVG</a><a href="/files/sacred-geometry/${f.slug}-cut.svg" download>Cut SVG</a><a href="/files/sacred-geometry/${f.slug}-cut.dxf" download>Cut DXF</a><a href="/files/sacred-geometry/${f.slug}-lines.dxf" download>Line DXF</a><a href="/files/sacred-geometry/${f.slug}-letter.pdf" download>PDF</a><a class="edit" href="${f.edit}">Edit</a></p></li>`).join('')}</ul>
+</div>
+<div class="wrap section narrow article">
+<h2>How to make a sacred geometry mandala</h2>
+<ol class="steps">
+<li><strong>Pick a figure.</strong> In Shapes, choose a figure from the Sacred geometry group and press Add. It sits at the center and fits inside your rings.</li>
+<li><strong>Choose a variation.</strong> Tap the layer to switch between versions, like 19, 37 or 61 circles for the Flower of Life, and to change its size or turn it.</li>
+<li><strong>Ring it.</strong> Add petals, arches or dots around it. Use six-fold symmetry, or 12, 18 or 24, so the rings line up with six-fold figures.</li>
+<li><strong>Download.</strong> Print a PDF coloring page, save a PNG, make a sticker, or download a cut-ready SVG or DXF.</li>
+</ol>
+<h2>Leave the center open for a name</h2>
+<p>In Design, slide Open center for words and type a name, a word or a date. The figure and rings stop at the opening, and the maker tells you how wide the opening prints on a page and on a sticker, so you know the lettering will fit. Cut files keep the center open so you can add your own lettering in your cutting software.</p>
+<h2>Make it a sticker</h2>
+<p>The Sticker download makes a round die-cut sticker: your design on a disc, a white border, bleed beyond the cut, and a magenta CutContour line that print then cut machines and sticker printers recognize. Try the Night glow look for gold lines on a dark disc.</p>
+<h2>Start from a template</h2>
+${templateTiles(null, SACRED_TEMPLATES)}
+<p>Or print one ready now from the <a href="/coloring-pages/sacred-geometry/">sacred geometry coloring pages</a>.</p>
+<h2>Questions</h2>${faqHTML(faq)}
+</div>`,
+  });
+}
+
 // Templates
 page({
   path: '/templates/', title: 'Free Mandala Templates to Edit, Print or Cut',
@@ -540,7 +674,8 @@ page({
   crumbs: [['/', 'Home'], ['/templates/', 'Templates']],
   sitemapImages: TEMPLATES.map(t => `${SITE}/img/templates/${t.slug}.svg`),
   body: `<div class="wrap hero"><h1>Mandala Templates</h1><p class="lede">Each template opens in the free maker, where you can change the symmetry, shapes and colors, then download it to print or cut.</p></div>
-<div class="wrap section">${templateTiles()}</div>`,
+<div class="wrap section"><h2>Sacred geometry templates</h2>${templateTiles(null, SACRED_TEMPLATES)}
+<h2>Mandala templates</h2>${templateTiles(null, TEMPLATES.filter(t => !t.sacred))}</div>`,
 });
 for (const t of TEMPLATES) {
   const d = templateDesign(t.slug);
@@ -605,7 +740,7 @@ for (const lv of LEVELS) {
     page({
       path: base + '/',
       title: `${c.name} Coloring Page: Free Printable PDF`,
-      description: `A free printable ${lv.key === 'medium' ? '' : lv.key + ' '}mandala coloring page with ${c.n}-fold symmetry. Download the PDF at Letter or A4, or edit it in the free mandala maker.`,
+      description: `A free printable ${lv.key === 'medium' ? '' : lv.name.toLowerCase() + ' '}mandala coloring page with ${c.n}-fold symmetry. Download the PDF at Letter or A4, or edit it in the free mandala maker.`,
       crumbs: [['/', 'Home'], ['/coloring-pages/', 'Coloring pages'], [`/coloring-pages/${lv.key}/`, lv.name], [base + '/', c.name]],
       ogImage: `/img/pins/${lv.key}-${c.slug}.png`, ogImageAlt: `${c.name} coloring page`,
       sitemapImages: [`${SITE}/img${base}.svg`],
@@ -711,17 +846,19 @@ write('site.webmanifest', JSON.stringify({
 }));
 write('llms.txt', `# ${BRAND}
 
-> A free online mandala maker at ${SITE}. Draw with radial symmetry (4 to 36 slices, optional mirroring), add rings of shapes, and download PNG, PDF coloring pages, cut-ready SVG for Cricut and Silhouette, and DXF for laser, CNC and plasma cutting. No signup, no watermark, free to use for products you sell.
+> A free online mandala maker at ${SITE}. Draw with radial symmetry (4 to 36 slices, optional mirroring), add rings of shapes, and download PNG, PDF coloring pages, cut-ready SVG for Cricut and Silhouette, and DXF for laser, CNC and plasma cutting. Sacred geometry figures, an open center for a name, and die-cut sticker export. No signup, no watermark, free to use for products you sell.
 
 ## Tools
 - [Mandala maker](${SITE}/): draw or build a mandala and export it
 - [Mandala SVG for Cricut](${SITE}/svg-for-cricut/)
 - [Mandala DXF for laser and plasma](${SITE}/dxf-for-laser-and-plasma/)
 - [Mandala coloring page maker](${SITE}/coloring-page-maker/)
+- [Sacred geometry generator](${SITE}/sacred-geometry/): the Flower of Life, Seed of Life, Metatron's Cube, golden spirals and more, with free SVG, DXF and PDF downloads
 
 ## Free designs
 - [Mandala templates](${SITE}/templates/)
 - [Printable mandala coloring pages](${SITE}/coloring-pages/)
+- [Sacred geometry coloring pages](${SITE}/coloring-pages/sacred-geometry/)
 
 ## Guides
 ${ARTICLES.map(a => `- [${a.title}](${SITE}/learn/${a.slug}/)`).join('\n')}

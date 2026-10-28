@@ -87,8 +87,10 @@ p { margin: 0 0 1em; }
 .mk-tab-body[hidden] { display: none; }
 .mk-row { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: .92rem; }
 .mk-row > span { color: var(--ink-2); }
+.mk-text-row { grid-template-columns: 7.5em minmax(0, 1fr); }
+.mk-row input:disabled { opacity: .5; }
 .mk-row output { min-width: 2.6em; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; }
-.mk-row select, .mk-row input[type="number"], .mk-panel select { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+.mk-row select, .mk-row input[type="number"], .mk-row input[type="text"], .mk-panel select { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
 .mk-row input[type="range"] { width: 100%; accent-color: var(--accent); }
 .mk-row input[type="color"] { width: 44px; height: 32px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
 .mk-check { display: flex; align-items: center; gap: 8px; font-size: .92rem; color: var(--ink-2); }
@@ -172,3 +174,14 @@ table.fmt th { background: #f4efe7; font-size: .9rem; }
 @media print {
   .site-head, .site-foot, .maker, .cta-row { display: none !important; }
 }
+
+/* Sacred geometry downloads */
+.sg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; list-style: none; padding: 0; margin: 0; }
+.sg-grid li { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.sg-grid img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+.sg-grid h3 { margin: 4px 0 0; font-size: 1.05rem; }
+.sg-grid p { margin: 0; font-size: .9rem; color: var(--ink-2); }
+.sg-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+.sg-links a { font-size: .85rem; padding: 4px 9px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); background: #fff; }
+.sg-links a:hover { border-color: var(--accent); }
+.sg-links a.edit { background: var(--accent-soft); }

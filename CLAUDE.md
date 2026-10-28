@@ -10,9 +10,13 @@ Duet, which also pushes to this repo. DEPLOY.md was written for Duet's container
 
 - `src/js/core.js`: the geometry and the `TEMPLATES` list, plus SVG, cut-outline, DXF and PDF
   output. It's shared by the browser and the build.
+  Sacred geometry figures (`kind: 'figure'` in `SHAPES`, drawn by `figurePaths`), the open
+  center and its words (`d.open`, `d.text`, `d.font`), and the die-cut sticker (`stickerSVG`)
+  were ported from the older mandala-studio project on 2026-10-28.
 - `src/js/app.js`: the maker's UI, bundled by esbuild into `dist/js/maker.js`.
 - `src/content.mjs`: `FAQ` and the `ARTICLES` (guides).
-- `src/build.mjs`: the pages, sitemap, schema and assets, written to `dist/`.
+- `src/build.mjs`: the pages, sitemap, schema and assets, written to `dist/`. `/sacred-geometry/` also writes
+  free downloads of each figure to `dist/files/sacred-geometry/`.
 - `src/css/site.css`
 - `src/optimize_png.py`: palette-quantizes the PNGs (needs Pillow).
 
