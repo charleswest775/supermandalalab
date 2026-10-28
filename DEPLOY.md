@@ -2,7 +2,7 @@
 
 The site is a static build served by the Cloudflare Worker `supermandalalab`, using static assets on the free tier, at https://supermandalalab.com.
 
-The GitHub repo https://github.com/charleswest775/supermandalalab is the source of truth. It is **public**, so never commit anything private: no tokens or keys, no account or zone ids, no personal email (commits use the GitHub noreply address), and no task notes. Cloudflare's Git integration (Workers Builds) watches the `main` branch. Each push to `main` runs `npx wrangler deploy`, which uploads `dist/` and goes live within a minute or two. No build runs on Cloudflare, because `dist/` is built locally and committed.
+The GitHub repo https://github.com/charleswest775/supermandalalab is the source of truth. It is **public**, so never commit anything private: no tokens or keys, no account or zone ids, no personal email (commits use the GitHub noreply address), and no task notes. Cloudflare's Git integration (Workers Builds) is connected to this repo and watches the `main` branch. Each push to `main` runs `npx wrangler deploy`, which uploads `dist/` and goes live in under a minute (verified Oct 28, 2026: push to live took about 30 seconds). The Cloudflare build command is deliberately empty: `dist/` is built locally and committed, so Cloudflare only uploads it. Don't set the build command to `npm run build`, because the build also needs Python with Pillow, which Cloudflare's build image may not have.
 
 ## Publishing a change
 
@@ -26,15 +26,23 @@ The GitHub repo https://github.com/charleswest775/supermandalalab is the source 
    ```
    git add -A && git commit -m "Add <what changed>" && git push origin main
    ```
-6. Check that it's live. Open the new pages on https://supermandalalab.com/ in a browser. The Worker's Deployments list in the Cloudflare dashboard shows the new version. Then use URL Inspection in Google Search Console (URL-prefix property `https://supermandalalab.com/`) to request indexing for the new pages. The quota is about 10 a day.
+6. Check that it's live. https://supermandalalab.com/version.txt shows the build time of what's deployed, so it should match the build you just pushed. Then open the new pages on https://supermandalalab.com/ in a browser. The Worker's Deployments list in the Cloudflare dashboard shows each push as a "Build" from `main`, and a failed build shows there too. Then use URL Inspection in Google Search Console (URL-prefix property `https://supermandalalab.com/`) to request indexing for the new pages. The quota is about 10 a day.
 
 ## Things to keep
 
 - `dist/google114b1fb682c7dd8a.html` is the Search Console verification file, written by `build.mjs`. Removing it unverifies the site.
+- `dist/version.txt` is the build stamp, written by `build.mjs`.
 - `wrangler.jsonc` lists both custom domains. Leave them in, so a deploy keeps supermandalalab.com and www attached.
 - The www-to-apex redirect and Always Use HTTPS are zone settings in Cloudflare, not part of this repo.
 - Cloudflare Web Analytics is injected automatically, so the site needs no script tag for it.
 - Never commit API tokens or other credentials. Pushing uses the session's GitHub access, and Cloudflare deploys through its own Git integration.
+
+## Weekly routine
+
+Once a week:
+1. `git pull`, then add one guide to `ARTICLES` and, if useful, one template to `TEMPLATES`, aimed at a search people make ("mandala svg for cricut", "dot mandala template" and the like).
+2. Build, preview new templates, commit and push. The site updates by itself.
+3. Check `version.txt` and the new pages, then request indexing for them in Search Console.
 
 ## Manual fallback
 
