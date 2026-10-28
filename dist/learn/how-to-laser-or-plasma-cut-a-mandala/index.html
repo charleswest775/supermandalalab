@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Laser or Plasma Cut a Mandala: File Prep, Bridges and Kerf</title>
+<meta name="description" content="Prepare a mandala for a laser cutter or CNC plasma table: choose the right file type, set line thickness for your material, avoid loose pieces, and plan for kerf and heat.">
+<link rel="canonical" href="https://supermandalalab.com/learn/how-to-laser-or-plasma-cut-a-mandala/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:site_name" content="Super Mandala Lab">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Laser or Plasma Cut a Mandala: File Prep, Bridges and Kerf">
+<meta property="og:description" content="Prepare a mandala for a laser cutter or CNC plasma table: choose the right file type, set line thickness for your material, avoid loose pieces, and plan for kerf and heat.">
+<meta property="og:url" content="https://supermandalalab.com/learn/how-to-laser-or-plasma-cut-a-mandala/">
+<meta property="og:image" content="https://supermandalalab.com/img/og/learn-how-to-laser-or-plasma-cut-a-mandala.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#fbf8f3">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="stylesheet" href="/css/site.css?v=addeccac80">
+
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"How to Laser or Plasma Cut a Mandala: File Prep, Bridges and Kerf","description":"Prepare a mandala for a laser cutter or CNC plasma table: choose the right file type, set line thickness for your material, avoid loose pieces, and plan for kerf and heat.","datePublished":"2026-10-28","dateModified":"2026-10-28","author":{"@type":"Organization","name":"Super Mandala Lab","url":"https://supermandalalab.com/"},"publisher":{"@context":"https://schema.org","@type":"Organization","name":"Super Mandala Lab","url":"https://supermandalalab.com/","logo":"https://supermandalalab.com/icon-512.png","parentOrganization":{"@type":"Organization","name":"SuperFabLab","url":"https://superfablab.com"}},"image":"https://supermandalalab.com/img/og/learn-how-to-laser-or-plasma-cut-a-mandala.png","mainEntityOfPage":"https://supermandalalab.com/learn/how-to-laser-or-plasma-cut-a-mandala/"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://supermandalalab.com/"},{"@type":"ListItem","position":2,"name":"Learn","item":"https://supermandalalab.com/learn/"},{"@type":"ListItem","position":3,"name":"Laser and plasma cutting a mandala","item":"https://supermandalalab.com/learn/how-to-laser-or-plasma-cut-a-mandala/"}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head"><div class="wrap">
+<a class="brand" href="/"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g fill="none" stroke="#d9622b" stroke-width="5" stroke-linejoin="round"><path transform="rotate(0)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(45)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(90)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(135)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(180)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(225)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(270)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(315)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/></g><circle r="7" fill="#3b3480"/></svg><span>Super Mandala Lab</span></a>
+<nav class="nav" aria-label="Main"><a href="/">Maker</a><a href="/templates/">Templates</a><a href="/coloring-pages/">Coloring pages</a><a href="/svg-for-cricut/">SVG for Cricut</a><a href="/dxf-for-laser-and-plasma/">DXF for laser</a><a href="/learn/">Learn</a></nav>
+</div></header>
+<main id="main">
+<div class="wrap"><nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/learn/">Learn</a> › <span>Laser and plasma cutting a mandala</span></nav></div>
+<article class="narrow article"><header class="hero"><h1>How to Laser or Plasma Cut a Mandala: File Prep, Bridges and Kerf</h1><p class="meta">By Super Mandala Lab · <time datetime="2026-10-28">October 28, 2026</time></p></header>
+
+<p>A mandala makes a beautiful cut piece, whether it's a wood coaster on a desktop laser or a steel wall panel on a CNC plasma table. It is also one of the easier designs to get wrong, because mandalas are full of small, closed shapes that can fall out, burn up or warp. This guide covers how to prepare a mandala file so it cuts cleanly the first time.</p>
+
+<h2>Use a vector file, not an image</h2>
+<p>Cutting machines follow paths, not pixels. You need a vector file: DXF for most CNC and plasma software, and DXF or SVG for most lasers. A PNG or JPG has to be traced first, and traced files often come out with wobbly edges and thousands of tiny segments.</p>
+<p>The <a href="/dxf-for-laser-and-plasma/">mandala maker's DXF export</a> writes closed polylines at the real size you choose, in inches or millimeters, so the file opens at the right scale in software such as LightBurn, Fusion, Inkscape or SheetCAM.</p>
+
+<h2>Lines have to become shapes</h2>
+<p>A drawing is made of lines, but a cutting machine needs the outline of material. If you cut along a single line, you get a thin slot as wide as the kerf, not a line you can see from across the room. To keep the line work as solid material, each line needs a real thickness, and the machine cuts around both edges of it.</p>
+<p>That's what the maker's <strong>Cut-ready</strong> option does. It gives every line the thickness you choose, merges everything that overlaps, and exports only the outside edges. You get clean closed shapes with no overlapping or duplicate paths.</p>
+
+<h2>Pick a line thickness your material can hold</h2>
+<p>The thinnest line in the design is the weakest part of the finished piece. As a starting point:</p>
+<ul>
+  <li><strong>Plasma.</strong> A common rule of thumb is to keep lines, bridges and holes at least as wide as the material is thick, and wider on thin sheet that warps easily. For 14 gauge steel, a line around 0.08 to 0.125 inches is a reasonable place to start.</li>
+  <li><strong>Laser on wood or acrylic.</strong> Lasers can cut much finer detail. For 3 mm plywood, lines around 1.5 to 2 mm hold up well in a piece you'll handle.</li>
+  <li><strong>Paper, cardstock and vinyl.</strong> Cutters handle fine detail, but very thin lines tear when you weed or lift them.</li>
+</ul>
+<p>Always make a test cut on scrap before cutting a big piece.</p>
+
+<h2>Watch for loose pieces</h2>
+<p>In a mandala, every shape that doesn't touch another line comes out as a separate piece. A ring of floating dots becomes a handful of loose dots. Sometimes that is what you want; often it isn't.</p>
+<p>When you download a cut-ready file, the maker counts the pieces and tells you if the design will fall apart. To tie a design together:</p>
+<ul>
+  <li>Make shapes overlap the ring next to them, using the <em>Length</em> and <em>Distance from center</em> sliders.</li>
+  <li>Add a ring that runs through a band of loose shapes.</li>
+  <li>Use rays to connect the center to the outer rings.</li>
+</ul>
+
+<h2>Stencils, panels and bridges</h2>
+<p>There are two ways to cut the same mandala:</p>
+<ul>
+  <li><strong>Positive (cut-ready shapes).</strong> The lines are the material. This makes lacy, filigree pieces like ornaments and wall hangings.</li>
+  <li><strong>Stencil or panel.</strong> The design is cut out of a solid disc, so the lines become openings. This is the style of many decorative metal panels and lantern sides.</li>
+</ul>
+<p>Stencils have one big catch: any closed line cuts a piece completely free, and that piece falls out. Traditional stencil makers add small "bridges" to hold the middle in place. The maker warns you how many areas would fall out of a stencil so you can add bridges in your CAM software, or switch to the positive style.</p>
+
+<h2>Plan for kerf</h2>
+<p>Kerf is the width of material the cut removes. It is small on a laser, often around a tenth or two of a millimeter, and much wider on plasma, often well over a millimeter. Kerf makes holes slightly bigger and solid parts slightly smaller. Most CAM software applies a kerf offset for you when you tell it which side of the line to cut on, so draw the design at its finished size and let the software handle the offset.</p>
+
+<h2>Heat, order and pierces</h2>
+<ul>
+  <li><strong>Heat.</strong> A dense mandala puts a lot of heat into a small area. On plasma, thin sheet can warp. Spreading the cut order around the part, rather than cutting neighbors one after another, helps.</li>
+  <li><strong>Inside first.</strong> Cut interior holes before the outside profile, so the part doesn't shift before it's finished. Most CAM software does this by default.</li>
+  <li><strong>Pierces.</strong> Every closed shape needs its own pierce. Lots of tiny holes means lots of pierces, which takes time and wears consumables. Fewer, larger openings cut faster.</li>
+</ul>
+
+<h2>Sizing</h2>
+<p>Enter the finished diameter when you download. The DXF comes out at exactly that width, so a 12 inch design measures 12 inches edge to edge in your software. Keep the line thickness in the same units.</p>
+
+<h2>Try it</h2>
+<p>Open the <a href="/dxf-for-laser-and-plasma/">mandala maker for laser and plasma</a>, start from the <a href="/templates/star-mandala/">star mandala template</a>, which has straight lines that cut cleanly, and download a cut-ready DXF at your size. It's free, with no signup.</p>
+
+<div class="closing"><h2>Make a mandala now</h2><p>Free, no signup, and ready to print or cut.</p><p><a class="btn" href="/templates/star-mandala/">Open the star mandala</a></p></div>
+</article>
+</main>
+<footer class="site-foot"><div class="wrap">
+<div class="cols">
+<div><h4>Super Mandala Lab</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
+<div><h4>Make</h4><ul><li><a href="/">Mandala maker</a></li><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li></ul></div>
+<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
+<div><h4>Learn</h4><ul><li><a href="/learn/what-is-a-mandala/">What is a mandala?</a></li><li><a href="/learn/how-to-draw-a-mandala/">How to draw a mandala</a></li><li><a href="/learn/how-to-laser-or-plasma-cut-a-mandala/">Laser and plasma cutting a mandala</a></li><li><a href="/learn/how-to-cut-a-mandala-on-cricut/">Cutting a mandala on a Cricut</a></li><li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
+</div>
+<p class="fine">Made in Reno, Nevada by <a href="https://superfablab.com">SuperFabLab</a>, a metal fabrication studio. © 2026 Super Mandala Lab.</p>
+</div></footer>
+</body>
+</html>

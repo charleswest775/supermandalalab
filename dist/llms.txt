@@ -1,0 +1,19 @@
+# Super Mandala Lab
+
+> A free online mandala maker at https://supermandalalab.com. Draw with radial symmetry (4 to 36 slices, optional mirroring), add rings of shapes, and download PNG, PDF coloring pages, cut-ready SVG for Cricut and Silhouette, and DXF for laser, CNC and plasma cutting. No signup, no watermark, free to use for products you sell.
+
+## Tools
+- [Mandala maker](https://supermandalalab.com/): draw or build a mandala and export it
+- [Mandala SVG for Cricut](https://supermandalalab.com/svg-for-cricut/)
+- [Mandala DXF for laser and plasma](https://supermandalalab.com/dxf-for-laser-and-plasma/)
+- [Mandala coloring page maker](https://supermandalalab.com/coloring-page-maker/)
+
+## Free designs
+- [Mandala templates](https://supermandalalab.com/templates/)
+- [Printable mandala coloring pages](https://supermandalalab.com/coloring-pages/)
+
+## Guides
+- [What Is a Mandala? Meaning, History and How They're Used](https://supermandalalab.com/learn/what-is-a-mandala/)
+- [How to Draw a Mandala: A Step-by-Step Guide for Beginners](https://supermandalalab.com/learn/how-to-draw-a-mandala/)
+- [How to Laser or Plasma Cut a Mandala: File Prep, Bridges and Kerf](https://supermandalalab.com/learn/how-to-laser-or-plasma-cut-a-mandala/)
+- [How to Cut a Mandala on a Cricut: SVG Setup, Sizing and Weeding](https://supermandalalab.com/learn/how-to-cut-a-mandala-on-cricut/)

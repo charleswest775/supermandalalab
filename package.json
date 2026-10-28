@@ -1,0 +1,16 @@
+{
+  "name": "supermandalalab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Super Mandala Lab: free mandala maker at supermandalalab.com",
+  "scripts": {
+    "build": "node src/build.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "clipper-lib": "^6.4.2",
+    "esbuild": "^0.28.2"
+  }
+}

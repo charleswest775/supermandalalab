@@ -1,0 +1,17 @@
+{
+  // Static site served by Cloudflare Workers static assets (free tier).
+  // dist/ is built locally with `npm run build` and committed, so Cloudflare
+  // only has to upload it; no build step runs on Cloudflare.
+  "name": "supermandalalab",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "supermandalalab.com", "custom_domain": true },
+    { "pattern": "www.supermandalalab.com", "custom_domain": true }
+  ]
+}
