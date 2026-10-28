@@ -11,6 +11,7 @@ The GitHub repo is the source of truth. It is private, under Charles's account. 
    ```
    npm install --prefix /home/user/sml-deps esbuild@0.28 @resvg/resvg-js@2.6 clipper-lib@6.4
    ```
+   If git reports "dubious ownership" in the shared folder, run `git config --global --add safe.directory '*'` once.
    Python 3 with Pillow is also needed for PNG compression. Check with `python3 -c "import PIL"`, and run `python3 -m pip install pillow` if it's missing.
 3. Edit the source:
    - Templates are the `TEMPLATES` list in `src/js/core.js`. Each needs a slug, name, blurb, an optional `more` HTML string and a `make()` function.
