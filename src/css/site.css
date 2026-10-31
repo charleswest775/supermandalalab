@@ -118,6 +118,7 @@ p { margin: 0 0 1em; }
 .mk-dl h3 { margin: 0; font: 700 1rem var(--sans); display: flex; align-items: baseline; gap: 8px; }
 .mk-dl h3 small { font-weight: 400; color: var(--muted); font-size: .82rem; }
 .mk-dl [hidden] { display: none !important; }
+.maker[data-dl-first="sticker"] .mk-dl-sticker { order: -1; }
 .mk-toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, calc(100% + 40px)); visibility: hidden; background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; max-width: min(520px, 92vw); font-size: .95rem; box-shadow: var(--shadow); transition: transform .25s ease; z-index: 50; }
 .mk-toast.show { transform: translate(-50%, 0); visibility: visible; }
 .mk-toast:empty { display: none; }
@@ -185,3 +186,10 @@ table.fmt th { background: #f4efe7; font-size: .9rem; }
 .sg-links a { font-size: .85rem; padding: 4px 9px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); background: #fff; }
 .sg-links a:hover { border-color: var(--accent); }
 .sg-links a.edit { background: var(--accent-soft); }
+
+.tiles.stickers a, .sg-grid.stickers li { background: #eef1f3; }
+.tiles.stickers img, .sg-grid.stickers img, .sticker-note img { filter: drop-shadow(0 2px 5px rgba(36, 32, 63, .22)); }
+.sticker-note { display: flex; gap: 16px; align-items: center; }
+.sticker-note img { flex: none; width: 120px; height: 120px; }
+.sticker-note p { margin: 0; }
+@media (max-width: 520px) { .sticker-note { flex-direction: column; align-items: flex-start; } }

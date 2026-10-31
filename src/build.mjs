@@ -9,7 +9,7 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import {
   TEMPLATES, templateDesign, designSVG, randomDesign, buildPaths, pdfContent, pdfFile, compactDesign, SHAPES, escapeXML, simplify,
-  emptyDesign, normalizeDesign, ringLayer, cutOutlines, cutSVG, toDXF, boundsOf, countPieces,
+  emptyDesign, normalizeDesign, ringLayer, cutOutlines, cutSVG, toDXF, boundsOf, countPieces, stickerSVG, hasOpenCenter, openingSizes,
 } from './js/core.js';
 import { FAQ, ARTICLES } from './content.mjs';
 
@@ -31,10 +31,10 @@ const TODAY = new Date().toISOString().slice(0, 10);
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(DIST, { recursive: true });
 
-const write = (rel, data) => {
+const write = (rel, data, trim = true) => {
   const file = path.join(DIST, rel);
   // Trim coordinates in static SVG files; a tenth of a unit is invisible at any print size.
-  if (rel.endsWith('.svg') && typeof data === 'string') data = data.replace(/(\d+\.\d)\d+/g, '$1');
+  if (trim && rel.endsWith('.svg') && typeof data === 'string') data = data.replace(/(\d+\.\d)\d+/g, '$1');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, data);
 };
@@ -129,6 +129,8 @@ const NAV = [
   ['/', 'Maker'],
   ['/templates/', 'Templates'],
   ['/sacred-geometry/', 'Sacred geometry'],
+  ['/mandala-frames/', 'Frames for words'],
+  ['/mandala-stickers/', 'Stickers'],
   ['/coloring-pages/', 'Coloring pages'],
   ['/svg-for-cricut/', 'SVG for Cricut'],
   ['/dxf-for-laser-and-plasma/', 'DXF for laser'],
@@ -188,8 +190,8 @@ ${o.body}
 <footer class="site-foot"><div class="wrap">
 <div class="cols">
 <div><h4>${BRAND}</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
-<div><h4>Make</h4><ul><li><a href="/">Mandala maker</a></li><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li></ul></div>
-<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
+<div><h4>Make</h4><ul><li><a href="/">Mandala maker</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li></ul></div>
+<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
 <div><h4>Learn</h4><ul>${ARTICLES.map(a => `<li><a href="/learn/${a.slug}/">${esc(a.short)}</a></li>`).join('')}<li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
 </div>
 <p class="fine">Made in Reno, Nevada by <a href="https://superfablab.com">SuperFabLab</a>, a metal fabrication studio. © 2026 ${BRAND}.</p>
@@ -202,7 +204,7 @@ ${o.body}
 
 // ---------- the maker block ----------
 function maker(o = {}) {
-  return `<section id="maker" class="maker wrap" data-mode="draw" data-clipper="${CLIPPER_URL}"${o.template ? ` data-template="${o.template}"` : ''}${o.tab ? ` data-focus-tab="${o.tab}"` : ''} aria-label="Mandala maker">
+  return `<section id="maker" class="maker wrap" data-mode="draw" data-clipper="${CLIPPER_URL}"${o.template ? ` data-template="${o.template}"` : ''}${o.tab ? ` data-focus-tab="${o.tab}"` : ''}${o.level ? ` data-level="${o.level}"` : ''}${o.dlFirst ? ` data-dl-first="${o.dlFirst}"` : ''} aria-label="Mandala maker">
 <div class="mk-stage">
   <div class="mk-toolbar" role="toolbar" aria-label="Maker tools">
     <button type="button" data-mode-btn="draw" aria-pressed="true">Draw</button>
@@ -245,12 +247,13 @@ function maker(o = {}) {
       <label class="mk-row mk-text-row"><span>Words</span><input type="text" id="mk-text1" maxlength="30" placeholder="A name or a word" autocomplete="off"></label>
       <label class="mk-row mk-text-row"><span>Second line</span><input type="text" id="mk-text2" maxlength="30" placeholder="Optional, like a date" autocomplete="off"></label>
       <label class="mk-row mk-text-row"><span>Lettering</span><select id="mk-font"><option value="serif">Serif</option><option value="sans">Sans serif</option></select></label>
+      <label class="mk-check"><input type="checkbox" id="mk-words-files" checked> Put the words in downloads</label>
       <p id="mk-open-note">Slide to leave the middle empty for a name, a word or a date.</p>
     </div>
     <div class="mk-group">
       <h3>Start from something</h3>
       <select id="mk-template" aria-label="Templates"></select>
-      <div class="mk-inline"><select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option><option value="sacred">Sacred geometry</option></select><button type="button" id="mk-random">Surprise me</button></div>
+      <div class="mk-inline"><select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option><option value="sacred">Sacred geometry</option><option value="frame">Open center for words</option></select><button type="button" id="mk-random">Surprise me</button></div>
       <p>Templates and Surprise me replace the current design. Undo brings it back.</p>
     </div>
   </div>
@@ -272,6 +275,7 @@ function maker(o = {}) {
       <select id="mk-svg-style" aria-label="SVG style"><option value="cut">Cut-ready shapes (Cricut)</option><option value="stencil">Stencil: design cut from a disc</option><option value="lines">Line drawing (editable strokes)</option></select>
       <div class="mk-inline" data-cut-for="mk-svg" data-cut-only="1"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Width</span><input type="number" id="mk-svg-size" value="12" min="0.5" step="0.5"></label><select id="mk-svg-unit" aria-label="Units"><option value="in">in</option><option value="mm">mm</option></select></div>
       <label class="mk-row" data-cut-for="mk-svg" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-svg-thick" value="0.08" min="0.001" step="0.01"></label>
+      <label class="mk-check" data-cut-for="mk-svg" data-lines-only="1"><input type="checkbox" id="mk-svg-clear" checked> Transparent background</label>
       <button type="button" id="mk-dl-svg" class="mk-primary">Download SVG</button>
     </div>
     <div class="mk-dl"><h3>DXF <small>laser, CNC and plasma</small></h3>
@@ -280,7 +284,7 @@ function maker(o = {}) {
       <label class="mk-row" data-cut-for="mk-dxf" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-dxf-thick" value="0.08" min="0.001" step="0.01"></label>
       <button type="button" id="mk-dl-dxf" class="mk-primary">Download DXF</button>
     </div>
-    <div class="mk-dl"><h3>Sticker <small>die-cut, print then cut</small></h3>
+    <div class="mk-dl mk-dl-sticker"><h3>Sticker <small>die-cut, print then cut</small></h3>
       <div class="mk-inline"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Size</span><input type="number" id="mk-st-size" value="3" min="0.5" step="0.25"></label><select id="mk-st-unit" aria-label="Sticker units"><option value="in">in</option><option value="mm">mm</option></select></div>
       <label class="mk-row" style="grid-template-columns:auto 1fr"><span>Look</span><select id="mk-st-look"><option value="mine">My colors</option><option value="night">Night glow (gold on dark)</option></select></label>
       <label class="mk-row" style="grid-template-columns:auto 1fr"><span>White border</span><input type="number" id="mk-st-border" value="0.1" min="0" step="0.05"></label>
@@ -316,8 +320,23 @@ for (const t of TEMPLATES) {
 const homeDesign = templateDesign('lotus-mandala');
 write('img/og/home.png', png(socialCard(templateDesign('intricate-mandala'), 'Free Mandala Maker', 'SVG, DXF, PDF and PNG. No signup.'), 1200));
 
-const SACRED_TEMPLATES = TEMPLATES.filter(t => t.sacred);
+const FRAME_TEMPLATES = TEMPLATES.filter(hasOpenCenter);
+const SACRED_TEMPLATES = TEMPLATES.filter(t => t.sacred && !hasOpenCenter(t));
+const MANDALA_TEMPLATES = TEMPLATES.filter(t => !t.sacred && !hasOpenCenter(t));
 const templateTiles = (exclude, list = TEMPLATES) => `<ul class="tiles">${list.filter(t => t.slug !== exclude).map(t => `<li><a href="/templates/${t.slug}/"><img src="/img/templates/${t.slug}.svg" alt="${esc(t.name)} preview" width="300" height="300" loading="lazy"><span>${esc(t.name)}</span></a></li>`).join('')}</ul>`;
+
+// Sticker previews, and for designs without words a sticker ready to print and cut: 3 in across the
+// cut, with bleed and a CutContour line.
+const STICKER_TEMPLATES = TEMPLATES.filter(t => t.sticker && !hasOpenCenter(t));
+const WORD_STICKERS = TEMPLATES.filter(t => t.sticker && hasOpenCenter(t));
+for (const t of [...STICKER_TEMPLATES, ...WORD_STICKERS]) {
+  const d = templateDesign(t.slug);
+  const paths = lean(d);
+  // Untrimmed: a sticker is sized in millimeters, so its scale and its hairline cut are below a tenth.
+  write(`img/stickers/${t.slug}.svg`, stickerSVG(d, { look: t.sticker, paths, bleedMM: 0, cutline: false, px: 300 }), false);
+  if (!d.open) write(`files/stickers/${t.slug}-sticker.svg`, stickerSVG(d, { look: t.sticker, paths }), false);
+}
+const stickerTiles = list => `<ul class="tiles stickers">${list.map(t => `<li><a href="/templates/${t.slug}/"><img src="/img/stickers/${t.slug}.svg" alt="${esc(t.name)} as a round sticker" width="300" height="300" loading="lazy"><span>${esc(t.name)}</span></a></li>`).join('')}</ul>`;
 
 // ---------- coloring pages ----------
 const LEVELS = [
@@ -393,6 +412,14 @@ ${maker()}
 <p>Add the Flower of Life, the Seed of Life, Metatron's Cube, golden spirals, a mystic rose and more as a single layer, then ring it with petals and arches. Every figure is drawn from true circles and straight lines, so it prints crisply and cuts cleanly. See the <a href="/sacred-geometry/">sacred geometry generator and free downloads</a>.</p>
 ${templateTiles(null, SACRED_TEMPLATES)}
 
+<h2>Frames for words</h2>
+<p>Simple, bold mandalas with the center left open for a name, a quote or a date, made for wall tags, signs, cards and gifts. Type your words in the maker, or download the frame alone and letter it in your own software. See all the <a href="/mandala-frames/">mandala frames for words</a>.</p>
+${templateTiles(null, FRAME_TEMPLATES.filter(t => t.slug !== 'name-mandala').slice(0, 5))}
+
+<h2>Mandala stickers</h2>
+<p>Any design becomes a round die-cut sticker, with a white border, bleed and a CutContour cut line, or a 300 dpi PNG for sticker printers. These make especially good ones. Open the <a href="/mandala-stickers/">mandala sticker maker</a>.</p>
+${stickerTiles(STICKER_TEMPLATES.slice(0, 5))}
+
 <h2>How it works</h2>
 <ol class="steps">
 <li><strong>Pick your symmetry.</strong> Choose how many slices, from 4 to 36, and whether each slice mirrors.</li>
@@ -402,8 +429,8 @@ ${templateTiles(null, SACRED_TEMPLATES)}
 </ol>
 
 <h2>Start from a template</h2>
-<p>When a blank circle feels like too much, open a template and change it ring by ring.</p>
-${templateTiles()}
+<p>When a blank circle feels like too much, open a template and change it ring by ring. There are more in <a href="/templates/">all the templates</a>.</p>
+${templateTiles(null, MANDALA_TEMPLATES)}
 
 <div class="two-col">
 <div>
@@ -414,7 +441,8 @@ ${templateTiles()}
 <li>Cricut and Silhouette projects, including layered paper mandalas</li>
 <li>Laser-cut wood and acrylic, and plasma-cut steel</li>
 <li>Stencils, tattoo sketches and embroidery patterns</li>
-<li>Round stickers and name gifts, with words in an open center</li>
+<li>Round <a href="/mandala-stickers/">stickers</a> and name gifts</li>
+<li>Wall tags, signs and cards with words in an <a href="/mandala-frames/">open center</a></li>
 </ul>
 </div>
 <div>
@@ -491,7 +519,7 @@ const exportPages = [
 </ul>
 <h2>Print then cut stickers</h2>
 <p>In Download, the Sticker option makes a round die-cut sticker: your mandala on a disc, a white border, bleed beyond the cut, and the cut line as a magenta hairline on its own layer named CutContour. Print then cut workflows and many sticker printers look for that layer. Or download the sticker PNG at 300 dpi for printers that trace the edge of the image. Add a name in the open center for gifts and party favors.</p>
-<p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a>, the <a href="/templates/flower-of-life-mandala/">Flower of Life</a> or the <a href="/templates/name-mandala/">name mandala</a> template.</p>`,
+<p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a>, the <a href="/templates/flower-of-life-mandala/">Flower of Life</a> or the <a href="/templates/name-mandala/">name mandala</a> template, or see the <a href="/mandala-stickers/">mandala sticker maker</a>.</p>`,
   },
   {
     path: '/dxf-for-laser-and-plasma/', tab: 'download', template: 'star-mandala',
@@ -667,6 +695,127 @@ ${templateTiles(null, SACRED_TEMPLATES)}
   });
 }
 
+// Mandala frames: an open center for words, for wall tags, signs and cards.
+{
+  const faq = [
+    ['Can I put a quote in the middle?', 'Yes, up to two lines of 30 characters each, sized to fit the opening. For a longer quote, untick Put the words in downloads, download the frame, and set the quote in your own design software.'],
+    ['How do I make a monogram?', 'Type a single capital letter as the words. The laurel wreath and petal frames suit a monogram, with the serif lettering.'],
+    ['Can I use my own font?', 'The maker letters in serif or sans serif. For any other font, untick Put the words in downloads and add your lettering in your design or cutting software. The words stay in the maker as a preview.'],
+    ['Can I sell what I make with these frames?', 'Yes. The frames and everything you make with them are free to use, including on wall tags, signs, cards and stickers you sell.'],
+    ['Will the frame cut on a Cricut or a laser?', 'Yes. Download a cut-ready SVG or a DXF. Cut files always leave the center open, so the words don\'t cut out as loose letters, and the maker tells you if any shape would come out as a separate piece.'],
+  ];
+  const sizes = FRAME_TEMPLATES.map(t => ({ t, share: openingSizes(templateDesign(t.slug)).share }));
+  const inch = v => `${v.toFixed(1)} in`;
+  const frD = templateDesign('petal-frame-mandala');
+  write('img/og/mandala-frames.png', png(socialCard(frD, 'Mandala Frames for Words', 'Names, quotes and dates. Free.'), 1200));
+  page({
+    path: '/mandala-frames/',
+    title: 'Mandala Frames With an Open Center for Names, Quotes and Monograms',
+    ogTitle: 'Mandala Frames for Words',
+    description: 'Free mandala frames with an open center for a name, a quote or a monogram. Bold, simple designs for wall tags, signs and cards. Download SVG, PNG, PDF or DXF.',
+    maker: true, ogImage: '/img/og/mandala-frames.png',
+    crumbs: [['/', 'Home'], ['/mandala-frames/', 'Frames for words']],
+    sitemapImages: FRAME_TEMPLATES.map(t => `${SITE}/img/templates/${t.slug}.svg`),
+    schema: [faqSchema(faq)],
+    body: `<div class="wrap hero"><h1>Mandala Frames for Words</h1><p class="lede">Simple mandalas with the center left open for a name, a quote or a date. Made for wall tags, signs, cards, ornaments and name stickers. Type your words, or download the frame alone and letter it yourself.</p></div>
+${maker({ template: 'petal-frame-mandala', level: 'frame' })}
+<div class="wrap section">
+<h2>Frames to start from</h2>
+<p>Each one opens in the maker with sample words. For a new frame every time, choose Open center for words next to Surprise me: your words stay as they are.</p>
+${templateTiles(null, FRAME_TEMPLATES)}
+</div>
+<div class="wrap section narrow article">
+<h2>How to make a mandala frame</h2>
+<ol class="steps">
+<li><strong>Pick a frame.</strong> Choose one above, or press Surprise me with Open center for words selected.</li>
+<li><strong>Type your words.</strong> In Design, under Open center for words, type up to two lines and pick serif or sans serif lettering. The words are sized to fit the opening.</li>
+<li><strong>Size the opening.</strong> Slide Opening to make more room or less. The maker shows the opening as a share of the design's width, and how wide it prints on a page and on a sticker.</li>
+<li><strong>Download.</strong> A PNG or PDF to print, a line drawing SVG for your design software, a sticker, or a cut-ready SVG or DXF.</li>
+</ol>
+<h2>For wall tags, signs and screen printing</h2>
+<p>Small pieces need bold lines. These frames use a line weight of 4.5 to 6, which prints about 0.3 mm wide on a design 2 inches across: enough for screen printing and laser engraving. Going smaller, or printing with a coarse screen? Raise Line weight in Design.</p>
+<p>To set the words in your own lettering, untick <strong>Put the words in downloads</strong> in Design, then download a <strong>Line drawing</strong> SVG at the size you need. It has a transparent background and an empty center, so you can place it on your tag or sign and add the words in your own software. The words stay in the maker as a preview.</p>
+<p>For a cut frame in vinyl, paper, wood or metal, download a cut-ready SVG or a DXF. Cut files always leave the center open.</p>
+<h2>How much room for words</h2>
+<p>The opening of each frame, inside its line, as a share of the frame's width and at two sizes:</p>
+<table class="fmt">
+<thead><tr><th>Frame</th><th>Opening</th><th>2 in frame</th><th>4 in frame</th></tr></thead>
+<tbody>
+${sizes.map(({ t, share }) => `<tr><td><a href="/templates/${t.slug}/">${esc(t.name)}</a></td><td>${Math.round(share * 100)}%</td><td>${inch(share * 2)}</td><td>${inch(share * 4)}</td></tr>`).join('\n')}
+</tbody>
+</table>
+<p>Need a frame for a tag or sign of another size? Multiply its width by the share. The Opening slider changes it.</p>
+<h2>Name stickers</h2>
+<p>A frame with a name makes a good round sticker or party favor. In Download, under Sticker, choose the size and the look. See the <a href="/mandala-stickers/">mandala sticker maker</a> for more.</p>
+<h2>Questions</h2>${faqHTML(faq)}
+</div>`,
+  });
+}
+
+// Mandala stickers
+{
+  const faq = [
+    ['Is the sticker maker free? Can I sell the stickers?', 'Yes. Every sticker download is free, with no watermark, and you may sell the stickers you make.'],
+    ['What is the CutContour layer?', 'CutContour is the name print-and-cut software and many print shops look for to find the cut line. The sticker SVG puts the cut line, a thin magenta circle, on a layer of its own with that name, and everything that prints in a group called artwork.'],
+    ['What size should a sticker be?', 'Round stickers are most often 2 to 4 inches across. The maker starts at 3 inches, measured across the cut line, with a 0.1 inch white border. Enter any size in inches or millimeters.'],
+    ['Will it work with Cricut Print Then Cut?', 'Yes. Upload the sticker PNG to Design Space as a Print Then Cut image, and Cricut cuts around the edge of the white border. Check the size in Design Space before you print.'],
+    ['Can I put a name on a sticker?', 'Yes. In Design, type a name or a date under Open center for words, or start from one of the <a href="/mandala-frames/">mandala frames for words</a>. The maker shows how wide the opening is on your sticker.'],
+  ];
+  const stD = templateDesign('flower-of-life-mandala');
+  write('img/og/mandala-stickers.png', png(socialCard(stD, 'Mandala Sticker Maker', 'Die-cut SVG and PNG. Free.'), 1200));
+  page({
+    path: '/mandala-stickers/',
+    title: 'Free Mandala Sticker Maker: Die-Cut Sticker SVG and PNG',
+    ogTitle: 'Mandala Sticker Maker',
+    description: 'Make round mandala stickers online. Free die-cut sticker SVG with bleed and a CutContour cut line, or a 300 dpi PNG for sticker printers. Add a name in an open center.',
+    maker: true, ogImage: '/img/og/mandala-stickers.png',
+    crumbs: [['/', 'Home'], ['/mandala-stickers/', 'Stickers']],
+    sitemapImages: [...STICKER_TEMPLATES, ...WORD_STICKERS].map(t => `${SITE}/img/stickers/${t.slug}.svg`),
+    schema: [faqSchema(faq), {
+      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Free mandala sticker downloads',
+      itemListElement: STICKER_TEMPLATES.map((t, i) => ({ '@type': 'ListItem', position: i + 1, item: {
+        '@type': 'ImageObject', name: `${t.name} sticker`, description: t.blurb, contentUrl: `${SITE}/img/stickers/${t.slug}.svg`, creator: ORG, isAccessibleForFree: true,
+      } })),
+    }],
+    body: `<div class="wrap hero"><h1>Mandala Sticker Maker</h1><p class="lede">Turn any mandala into a round die-cut sticker. Download an SVG with bleed and a CutContour cut line for print then cut, or a 300 dpi PNG for sticker printers. Free, with no signup.</p></div>
+${maker({ template: 'flower-of-life-mandala', tab: 'download', dlFirst: 'sticker' })}
+<div class="wrap section">
+<h2>Mandalas that make great stickers</h2>
+<p>Detailed enough to look rich at three inches and drawn with lines that hold up when printed small. Each sticker SVG is ready to print and cut at 3 inches; open one in the maker to change its size, colors or border.</p>
+<ul class="sg-grid stickers">${STICKER_TEMPLATES.map(t => `<li><img src="/img/stickers/${t.slug}.svg" alt="${esc(t.name)} as a round sticker" width="300" height="300" loading="lazy"><h3>${esc(t.name)}</h3>
+<p class="sg-links"><a href="/files/stickers/${t.slug}-sticker.svg" download>Sticker SVG</a><a class="edit" href="/templates/${t.slug}/">Edit</a></p></li>`).join('')}</ul>
+<h2>Name and word stickers</h2>
+<p>Leave the center open and type a name, a word or a date. The maker tells you how wide the opening is on your sticker, so you know the words will be big enough to read.</p>
+${stickerTiles(WORD_STICKERS)}
+</div>
+<div class="wrap section narrow article">
+<h2>How to make a mandala sticker</h2>
+<ol class="steps">
+<li><strong>Pick a design.</strong> Start from a sticker above, press Surprise me, or draw your own.</li>
+<li><strong>Choose a look.</strong> In Download, under Sticker, keep your own colors or pick Night glow for gold lines on a dark disc.</li>
+<li><strong>Set the size.</strong> Enter the size across the cut line, 3 inches to start, and the width of the white border.</li>
+<li><strong>Download.</strong> The sticker SVG for print then cut, or the sticker PNG for online sticker printers.</li>
+</ol>
+<h2>Which file to use</h2>
+<table class="fmt">
+<thead><tr><th>File</th><th>Best for</th></tr></thead>
+<tbody>
+<tr><td>Sticker SVG</td><td>Print-and-cut printers and print shops, or any workflow that reads a CutContour line. White bleed runs past the cut, so a cut that lands slightly off never shows a hard edge.</td></tr>
+<tr><td>Sticker PNG</td><td>Online sticker printers and Cricut Print Then Cut, which trace the edge of the image. 300 dpi, transparent outside the white border.</td></tr>
+<tr><td>Disc only</td><td>Round labels and printers that cut their own circle: tick Disc only for the design on its disc, with no border, bleed or cut line.</td></tr>
+</tbody>
+</table>
+<h2>Tips for small stickers</h2>
+<ul>
+<li><strong>Lines.</strong> The sticker file never draws a line thinner than 0.12 mm, so fine detail still prints. For stickers under 2 inches, a Line weight of 4 or more in Design keeps them crisp.</li>
+<li><strong>Words.</strong> On a 3 inch sticker, aim for an opening of an inch or more for a name. The maker shows it as you slide Opening.</li>
+<li><strong>Colors.</strong> Set the line and background colors in Design. Night glow turns dark lines gold on a deep indigo disc, with a soft glow behind the center.</li>
+</ul>
+<h2>Questions</h2>${faqHTML(faq)}
+</div>`,
+  });
+}
+
 // Templates
 page({
   path: '/templates/', title: 'Free Mandala Templates to Edit, Print or Cut',
@@ -674,8 +823,11 @@ page({
   crumbs: [['/', 'Home'], ['/templates/', 'Templates']],
   sitemapImages: TEMPLATES.map(t => `${SITE}/img/templates/${t.slug}.svg`),
   body: `<div class="wrap hero"><h1>Mandala Templates</h1><p class="lede">Each template opens in the free maker, where you can change the symmetry, shapes and colors, then download it to print or cut.</p></div>
-<div class="wrap section"><h2>Sacred geometry templates</h2>${templateTiles(null, SACRED_TEMPLATES)}
-<h2>Mandala templates</h2>${templateTiles(null, TEMPLATES.filter(t => !t.sacred))}</div>`,
+<div class="wrap section"><h2>Frames with an open center for words</h2>
+<p>Simple, bold designs with room in the middle for a name, a quote or a date, for wall tags, signs and cards. <a href="/mandala-frames/">More about mandala frames</a>.</p>${templateTiles(null, FRAME_TEMPLATES)}
+<h2>Sacred geometry templates</h2>${templateTiles(null, SACRED_TEMPLATES)}
+<h2>Mandala templates</h2>${templateTiles(null, MANDALA_TEMPLATES)}
+<p>Making stickers? See which templates make the best ones in the <a href="/mandala-stickers/">mandala sticker maker</a>.</p></div>`,
 });
 for (const t of TEMPLATES) {
   const d = templateDesign(t.slug);
@@ -701,6 +853,11 @@ ${maker({ template: t.slug })}
 <p>When it looks right, open Download and save it as a PDF coloring page, a PNG, a cut-ready SVG for Cricut, or a DXF for a laser or plasma table.</p>
 ${t.more ? `<h2>About the ${esc(t.name.toLowerCase())}</h2>
 ${t.more}` : ''}
+${d.open ? `<h2>Add your words</h2>
+<p>Open Design and type up to two lines under Open center for words. They're sized to fit the opening, and the maker tells you how wide the opening is at your size. To letter it yourself instead, untick Put the words in downloads and download a Line drawing SVG: it has a transparent background and an empty center, ready for your own lettering. See more <a href="/mandala-frames/">mandala frames for words</a>.</p>` : ''}
+${t.sticker ? `<h2>Make it a sticker</h2>
+<div class="sticker-note"><img src="/img/stickers/${t.slug}.svg" alt="${esc(t.name)} as a round sticker" width="140" height="140" loading="lazy">
+<p>This design makes a good round sticker. In Download, under Sticker, choose a size, a look and the white border, then download an SVG with a CutContour cut line or a 300 dpi PNG.${d.open ? '' : ` Or download a <a href="/files/stickers/${t.slug}-sticker.svg" download>3 inch sticker SVG</a> ready to print and cut.`} <a href="/mandala-stickers/">More about mandala stickers</a>.</p></div>` : ''}
 </div>
 <div class="preview"><img src="/img/templates/${t.slug}.svg" alt="${esc(t.name)} line art" width="520" height="520" loading="lazy"></div>
 </div>
@@ -854,9 +1011,11 @@ write('llms.txt', `# ${BRAND}
 - [Mandala DXF for laser and plasma](${SITE}/dxf-for-laser-and-plasma/)
 - [Mandala coloring page maker](${SITE}/coloring-page-maker/)
 - [Sacred geometry generator](${SITE}/sacred-geometry/): the Flower of Life, Seed of Life, Metatron's Cube, golden spirals and more, with free SVG, DXF and PDF downloads
+- [Mandala sticker maker](${SITE}/mandala-stickers/): round die-cut stickers as SVG with a CutContour cut line, or 300 dpi PNG, with free sticker downloads
 
 ## Free designs
 - [Mandala templates](${SITE}/templates/)
+- [Mandala frames for words](${SITE}/mandala-frames/): simple mandalas with an open center for a name, a quote or a date, for wall tags, signs and cards
 - [Printable mandala coloring pages](${SITE}/coloring-pages/)
 - [Sacred geometry coloring pages](${SITE}/coloring-pages/sacred-geometry/)
 

@@ -609,6 +609,7 @@ function luminance(h) {
 // the cut, and the cut line as a magenta hairline on a layer of its own named CutContour, the name
 // print-and-cut software looks for. For a PNG, pass bleed 0 and cutline false: the printer traces
 // the edge of the white border. plain: the disc alone, with no border, bleed or cut line.
+// paths: the design's paths, when they're already built.
 export function stickerSVG(d, o = {}) {
   const plain = !!o.plain;
   const sizeMM = o.sizeMM || 76.2;
@@ -619,7 +620,7 @@ export function stickerSVG(d, o = {}) {
   const night = o.look === 'night';
   const ink = night && luminance(d.ink) < 0.4 ? '#ecbc64' : d.ink;
   const disc = night ? '#0d0b1a' : d.bg === 'transparent' ? '#ffffff' : d.bg;
-  const paths = buildPaths(d);
+  const paths = o.paths || buildPaths(d);
   const b = boundsOf(paths);
   const ext = Math.max(Math.abs(b.x0), Math.abs(b.x1), Math.abs(b.y0), Math.abs(b.y1), 1);
   const k = (discR * 0.94) / ext;
@@ -647,7 +648,8 @@ export function stickerSVG(d, o = {}) {
   return s + '</svg>';
 }
 
-// How wide the open center is on a printed page and on a sticker, in inches.
+// How wide the open center is on a printed page and on a sticker, in inches, and as a share of the
+// design's width (for any other size).
 export function openingSizes(d, stickerIn = 3, borderIn = 0.1) {
   if (!d.open) return null;
   const b = boundsOf(buildPaths(d));
@@ -657,6 +659,7 @@ export function openingSizes(d, stickerIn = 3, borderIn = 0.1) {
   return {
     page: (across * ((612 - 80) / span)) / 72, // US Letter, as the PDF lays it out
     sticker: across * (((stickerIn / 2 - borderIn) * 0.94) / ext),
+    share: across / span,
   };
 }
 
@@ -875,6 +878,7 @@ export function randomDesign(seed, level = 'medium') {
   const between = (a, b) => a + (b - a) * rnd();
   const d = emptyDesign();
   if (level === 'sacred') return sacredDesign(d, pick, between, rnd);
+  if (level === 'frame') return frameDesign(d, pick, between, rnd);
   const simple = level === 'easy', intricate = level === 'intricate';
   d.n = pick(simple ? [6, 8, 8, 10, 12] : intricate ? [12, 16, 18, 20, 24] : [8, 10, 12, 12, 16]);
   d.w = simple ? 4 : intricate ? 2 : 3;
@@ -962,11 +966,52 @@ function sacredDesign(d, pick, between, rnd) {
   return d;
 }
 
+// A wide open center for words, framed by one band of bold shapes: for wall tags, signs and cards.
+function frameDesign(d, pick, between, rnd) {
+  d.n = pick([8, 10, 12, 12, 14, 16]);
+  d.w = pick([4.5, 5, 5, 6]);
+  d.open = Math.round(between(240, 300));
+  d.layers.push(ringLayer('circle', d.open, 0, 0));
+  const r = d.open + 2, limit = R - 40;
+  const shape = pick(['petal', 'petal', 'leaf', 'drop', 'heart', 'arch', 'spike', 'diamond', 'dot']);
+  const len = Math.min(limit - r - 30, between(90, 150));
+  const circ = (TAU * (r + len / 2)) / d.n;
+  let reach = len;
+  if (shape === 'dot') {
+    const s = Math.min(circ * 0.6, 50);
+    d.layers.push(ringLayer('dot', r + 8, s, s));
+    d.layers.push(ringLayer('dot', r + s + 18, s * 1.25, s * 1.25, { off: 0.5 }));
+    reach = s * 2.25 + 26;
+  } else if (shape === 'leaf' && rnd() < 0.6) {
+    const t = between(25, 35); // a laurel: leaves in pairs, leaning apart
+    d.layers.push(ringLayer('leaf', r + 4, len, Math.min(circ * 0.45, len * 0.4), { spin: t }));
+    d.layers.push(ringLayer('leaf', r + 4, len, Math.min(circ * 0.45, len * 0.4), { spin: -t }));
+  } else {
+    const wid = shape === 'arch' ? Math.min(circ * 0.95, len * 2) : shape === 'spike' ? circ * between(0.4, 0.7) : Math.min(circ * between(0.55, 0.9), len * 0.9);
+    d.layers.push(ringLayer(shape, r, len, wid, { echo: shape !== 'spike' && rnd() < 0.4 ? 1 : 0 }));
+    if (rnd() < 0.6) {
+      const small = pick(['dot', 'drop', 'petal', 'spike']);
+      const sl = small === 'dot' ? Math.min(28, circ * 0.3) : len * 0.6;
+      d.layers.push(ringLayer(small, r + 4, sl, small === 'dot' ? sl : Math.min(circ * 0.35, sl * 0.7), { off: 0.5 }));
+    }
+  }
+  let out = r + reach + 10;
+  if (out < limit - 16 && rnd() < 0.6) {
+    const s = Math.min(22, limit - out);
+    d.layers.push(ringLayer('dot', out, s, s, { off: rnd() < 0.5 ? 0.5 : 0 }));
+    out += s + 8;
+  }
+  d.layers.push(ringLayer('circle', Math.min(R - 20, out), 0, 0));
+  if (out + 22 < R - 10 && rnd() < 0.4) d.layers.push(ringLayer('circle', out + 18, 0, 0));
+  return d;
+}
+
 const L = ringLayer;
 
 export const TEMPLATES = [
   {
     slug: 'lotus-mandala', name: 'Lotus Mandala',
+    sticker: 'mine',
     blurb: 'Layered lotus petals opening from a small center, finished with a scalloped border. A classic first mandala that colors beautifully and cuts cleanly.',
     make: () => ({ ...emptyDesign(), n: 8, layers: [
       L('circle', 30, 0, 0), L('petal', 30, 120, 80), L('petal', 40, 190, 120, { off: 0.5 }),
@@ -977,6 +1022,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'snowflake-mandala', name: 'Snowflake Mandala',
+    sticker: 'night',
     blurb: 'Six-fold spikes and diamonds in the pattern of a snow crystal. Good for winter crafts, ornaments and window clings.',
     make: () => ({ ...emptyDesign(), n: 6, layers: [
       L('circle', 26, 0, 0), L('line', 26, 420, 0), L('diamond', 40, 120, 50, { echo: 1 }),
@@ -996,6 +1042,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'flower-mandala', name: 'Flower Mandala',
+    sticker: 'night',
     blurb: 'Round petals, teardrops and a ring of hearts, like a stylized bloom. A friendly design for coloring pages and stickers.',
     make: () => ({ ...emptyDesign(), n: 10, layers: [
       L('dot', 0, 50, 50), L('leaf', 25, 100, 50), L('circle', 130, 0, 0), L('arch', 130, 80, 80, { echo: 1 }),
@@ -1023,6 +1070,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'intricate-mandala', name: 'Intricate Mandala',
+    sticker: 'mine',
     blurb: 'Twenty-four-fold symmetry with nested petals and fine rings, for adult coloring and detailed vinyl or paper cuts.',
     make: () => ({ ...emptyDesign(), n: 24, w: 2, layers: [
       L('circle', 20, 0, 0), L('petal', 20, 80, 22), L('circle', 105, 0, 0), L('leaf', 105, 70, 26, { echo: 1 }),
@@ -1042,6 +1090,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'heart-mandala', name: 'Heart Mandala',
+    sticker: 'mine',
     blurb: 'Rings of hearts around a small flower center, with a scalloped edge. Made for Valentine\'s cards, wedding crafts and kids\' coloring.',
     more: `<p>Hearts sit point-in, so each ring reads as a flower when you step back and as hearts up close. The eight-fold symmetry keeps the shapes large enough for crayons and for a cutting machine.</p><p>For a card, download a PNG and drop it on the front. For a vinyl decal or a paper cut, download the cut-ready SVG and upload it to Cricut Design Space.</p>`,
     make: () => ({ ...emptyDesign(), n: 8, layers: [
@@ -1053,6 +1102,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'dot-mandala', name: 'Dot Mandala',
+    sticker: 'night',
     blurb: 'Rings of dots that grow toward the edge, the classic pattern for dot painting on rocks, canvas and wood.',
     more: `<p>Dot mandalas are painted one dot at a time with the end of a brush, a dotting tool or a pencil eraser. Print this pattern at the size of your rock or board as a guide, or trace the rings and mark the dots before you paint.</p><p>Start in the center and work out one ring at a time. Use the Design tab to change the number of dots in each ring, then download a PDF at Letter or A4 to print.</p>`,
     make: () => ({ ...emptyDesign(), n: 12, w: 2.5, layers: [
@@ -1095,6 +1145,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'boho-mandala', name: 'Boho Mandala',
+    sticker: 'night',
     blurb: 'Arches, rays and dot borders in a half-sun boho style, made for wall decals, tote bags and nursery prints.',
     more: `<p>Boho designs lean on repeated arches, sunbursts and dots in earthy colors. Set the line color to terracotta or sage in the Design tab, or download the SVG and color it in your own software.</p><p>For a wall decal, download a cut-ready SVG at the size of your wall and cut it from removable vinyl.</p>`,
     make: () => ({ ...emptyDesign(), n: 12, w: 3, ink: '#8a4b2c', layers: [
@@ -1115,6 +1166,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'flower-of-life-mandala', name: 'Flower of Life Mandala',
+    sticker: 'night',
     blurb: 'The sacred geometry Flower of Life: 19 overlapping circles in a hexagonal pattern, framed with a ring of petals. Free to print, cut or engrave.',
     sacred: true,
     more: `<p>The Flower of Life is a pattern of equal circles, each centered where its neighbors cross. The first seven circles form the Seed of Life; two full rings around the center make the classic 19-circle flower, the version found carved and drawn from ancient Egypt to Renaissance notebooks.</p><p>In the Shapes tab the Flower of Life is a single layer: change its size, turn it, or switch its variation to complete the outer petals or grow it to 37 or 61 circles. Because every line is a true circle, it cuts and engraves cleanly. Use a lines-only SVG or DXF to engrave it, or a cut-ready file to cut it as one connected piece.</p>`,
@@ -1135,6 +1187,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'metatrons-cube-mandala', name: "Metatron's Cube Mandala",
+    sticker: 'night',
     blurb: "Metatron's Cube: the 13 circles of the Fruit of Life joined by 78 straight lines, inside a ring of petals.",
     sacred: true,
     more: `<p>Metatron's Cube is drawn from the Fruit of Life, 13 circles on the Flower of Life's pattern, by joining every center to every other center with a straight line. Hidden in its lines are flat views of the cube, the octahedron and the other shapes long known as the Platonic solids.</p><p>Its long straight lines make it a strong choice for laser engraving and plasma-cut panels. In the Shapes tab, switch its variation to show only the lines, or only the circles of the Fruit of Life.</p>`,
@@ -1154,6 +1207,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'mystic-rose-mandala', name: 'Mystic Rose Mandala',
+    sticker: 'night',
     blurb: 'A mystic rose: every point on a circle joined to every other point, for a web of stars inside stars, framed with spikes.',
     sacred: true,
     more: `<p>A mystic rose joins every one of a set of evenly spaced points to every other point. With 12 points that's 66 straight lines, and together they draw every star polygon the points can make, from the outer dodecagon to the six diameters through the center.</p><p>Switch its variation to open the middle, which leaves room to color or to set words in an open center.</p>`,
@@ -1163,6 +1217,7 @@ export const TEMPLATES = [
   },
   {
     slug: 'sacred-geometry-mandala', name: 'Sacred Geometry Mandala',
+    sticker: 'mine',
     blurb: 'A Flower of Life center with completed petals, surrounded by layered lotus petals, arches and a star border.',
     sacred: true,
     more: `<p>This template combines a Flower of Life center with the petal rings of a lotus mandala. Each part is its own layer, so you can swap the center for the Seed of Life, Metatron's Cube or golden spirals in the Shapes tab and keep the rings around it.</p><p>Every sacred geometry figure in the maker downloads as a print-ready PDF, a cut-ready SVG for Cricut or a DXF for laser and plasma.</p>`,
@@ -1172,8 +1227,83 @@ export const TEMPLATES = [
       L('zigzag', 428, 34, 0, { mult: 2 }), L('circle', 462, 0, 0),
     ] }),
   },
+  // Frames: one or two bands of bold shapes around a wide open center, for words.
+  {
+    slug: 'petal-frame-mandala', name: 'Petal Frame Mandala',
+    blurb: 'A ring of bold petals around a wide open center for a word, a name or a short quote. Simple enough for wall tags, signs and cards.',
+    more: `<p>Twelve petals point out from the opening, with smaller petals between them and a ring of dots near the edge. The lines are heavy, so the frame still reads when it's printed only a couple of inches across.</p>`,
+    make: () => ({ ...emptyDesign(), n: 12, w: 5, open: 270, text: 'Be Kind', layers: [
+      L('circle', 270, 0, 0), L('petal', 272, 120, 74), L('petal', 276, 80, 46, { off: 0.5 }),
+      L('dot', 410, 22, 22, { off: 0.5 }), L('circle', 455, 0, 0),
+    ] }),
+  },
+  {
+    slug: 'sunburst-frame-mandala', name: 'Sunburst Frame Mandala',
+    sticker: 'mine',
+    blurb: 'Sharp rays around a round opening, like a sun with your words at its heart. Made for signs, wall tags and greeting cards.',
+    more: `<p>Twenty-four long rays alternate with shorter ones, with no outer ring, so the frame sits well on a round sign or a square card alike. Set it in a warm yellow or orange in the Design tab for a sunny look.</p>`,
+    make: () => ({ ...emptyDesign(), n: 24, w: 4.5, ink: '#c2571a', open: 280, text: 'Hello\nSunshine', font: 'sans', layers: [
+      L('circle', 280, 0, 0), L('spike', 284, 150, 34), L('spike', 284, 95, 30, { off: 0.5 }), L('circle', 300, 0, 0),
+      L('dot', 452, 14, 14, { off: 0.5 }),
+    ] }),
+  },
+  {
+    slug: 'heart-frame-mandala', name: 'Heart Frame Mandala',
+    sticker: 'mine',
+    blurb: 'Hearts and a scalloped band around an open center, for names, wedding dates and Valentine\'s cards.',
+    more: `<p>Ten hearts sit point-in around the opening, with dots between them and a scalloped band outside. Put two names on the first line and the date on the second for a wedding or anniversary gift.</p>`,
+    make: () => ({ ...emptyDesign(), n: 10, w: 5, ink: '#b3364f', open: 255, text: 'Love', layers: [
+      L('circle', 255, 0, 0), L('heart', 262, 100, 92), L('dot', 290, 26, 26, { off: 0.5 }), L('circle', 375, 0, 0),
+      L('scallop', 375, 44, 0, { mult: 2 }), L('circle', 440, 0, 0),
+    ] }),
+  },
+  {
+    slug: 'laurel-wreath-mandala', name: 'Laurel Wreath Mandala',
+    sticker: 'night',
+    blurb: 'Paired leaves leaning apart like a laurel wreath, framing a name, a monogram or a single word.',
+    more: `<p>Each of the fourteen slices holds two leaves turned away from each other, which reads as a wreath all the way round. A single letter in the center makes a monogram: try the serif lettering and one capital.</p>`,
+    make: () => ({ ...emptyDesign(), n: 14, w: 5, ink: '#3d6b47', open: 270, text: 'Grateful', layers: [
+      L('circle', 270, 0, 0), L('leaf', 274, 140, 48, { spin: 32 }), L('leaf', 274, 140, 48, { spin: -32 }),
+      L('dot', 430, 20, 20), L('circle', 462, 0, 0),
+    ] }),
+  },
+  {
+    slug: 'lotus-frame-mandala', name: 'Lotus Frame Mandala',
+    blurb: 'Eight wide lotus petals opening around a center left free for words. A calm frame for studio signs, quote tiles and cards.',
+    more: `<p>Big outlined petals with a second line inside each one, and narrower petals between them. With only eight slices, every shape is large, which suits screen printing, engraving and hand painting.</p>`,
+    make: () => ({ ...emptyDesign(), n: 8, w: 5.5, open: 240, text: 'Breathe', layers: [
+      L('circle', 240, 0, 0), L('petal', 240, 200, 170, { echo: 1 }), L('petal', 246, 140, 90, { off: 0.5 }), L('circle', 465, 0, 0),
+    ] }),
+  },
+  {
+    slug: 'dot-frame-mandala', name: 'Dot Frame Mandala',
+    blurb: 'Three rings of dots around an open center, for dot-painted signs, rocks and wall tags with a word in the middle.',
+    more: `<p>The dots grow toward the edge, in the style of dot mandala painting. Print it at the size of your board or rock as a guide, paint the dots, and letter the word in the middle by hand.</p>`,
+    make: () => ({ ...emptyDesign(), n: 16, w: 4.5, open: 285, text: 'Home', layers: [
+      L('circle', 285, 0, 0), L('dot', 300, 30, 30, { off: 0.5 }), L('dot', 342, 42, 42), L('dot', 398, 50, 50, { off: 0.5 }), L('circle', 462, 0, 0),
+    ] }),
+  },
+  {
+    slug: 'arch-frame-mandala', name: 'Arch Frame Mandala',
+    blurb: 'Boho arches and teardrops inside a double ring, around an opening for a welcome sign or a family name.',
+    more: `<p>Twelve arches with a second line inside each, teardrops between them, and two rings at the edge. It has the widest opening of the frames, so it takes a longer word or a two-line quote.</p>`,
+    make: () => ({ ...emptyDesign(), n: 12, w: 6, open: 300, text: 'Welcome', layers: [
+      L('circle', 300, 0, 0), L('arch', 300, 80, 120, { echo: 1 }), L('drop', 304, 120, 40, { off: 0.5 }),
+      L('circle', 440, 0, 0), L('circle', 462, 0, 0),
+    ] }),
+  },
+  {
+    slug: 'star-frame-mandala', name: 'Star Frame Mandala',
+    blurb: 'Zigzag points, diamonds and spikes around an open center. A geometric frame for signs, ornaments and engraved tags.',
+    more: `<p>A zigzag band hugs the opening, with outlined diamonds and spikes beyond it. Its straight lines engrave cleanly on a laser, and the sans serif lettering suits its sharp edges.</p>`,
+    make: () => ({ ...emptyDesign(), n: 12, w: 5, open: 270, text: 'Shine', font: 'sans', layers: [
+      L('circle', 270, 0, 0), L('zigzag', 270, 50, 0, { mult: 2 }), L('diamond', 330, 110, 50, { echo: 1 }),
+      L('spike', 335, 80, 30, { off: 0.5 }), L('circle', 460, 0, 0),
+    ] }),
+  },
   {
     slug: 'name-mandala', name: 'Name Mandala',
+    sticker: 'night',
     blurb: 'A mandala with an open center for a name, a word or a date. Type your words in the maker and print or make a sticker.',
     sacred: false,
     more: `<p>The center of this mandala is left open for words. Open the Design tab and type a name, a word or a date under Open center, with an optional second line. The words are sized to fit the opening and go into the PNG, PDF, line SVG and sticker downloads.</p><p>The maker tells you how wide the opening will be on a printed page and on a sticker, so you can plan lettering of your own. Cut-ready SVG and DXF files leave the center open, so you can add lettering in your cutting software.</p>`,
@@ -1182,6 +1312,9 @@ export const TEMPLATES = [
     ] }),
   },
 ];
+
+// Templates with an open center for words.
+export const hasOpenCenter = t => !!t.make().open;
 
 export function templateDesign(slug) {
   const t = TEMPLATES.find(t => t.slug === slug);

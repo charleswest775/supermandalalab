@@ -2,7 +2,7 @@
 import {
   R, SHAPES, SYMMETRY_CHOICES, TEMPLATES, buildPaths, designSVG, pathD, smoothStroke, normalizeDesign,
   emptyDesign, ringLayer, randomDesign, templateDesign, cutOutlines, cutSVG, toDXF, pdfContent, pdfFile,
-  compactDesign, countPieces, boundsOf, newId, textSVG, stickerSVG, openingSizes, cleanText,
+  compactDesign, countPieces, boundsOf, newId, textSVG, stickerSVG, openingSizes, cleanText, hasOpenCenter,
 } from './core.js';
 
 const STORE_KEY = 'sml:design:v1';
@@ -97,8 +97,9 @@ function init(root) {
     out.textContent = Math.round(design.open);
     if (!sz) return;
     const fmt = v => v >= 1 ? v.toFixed(1) + ' in' : v.toFixed(2) + ' in';
-    note.textContent = `The opening is ${fmt(sz.page)} across on a printed page, and ${fmt(sz.sticker)} (${Math.round(sz.sticker * 25.4)} mm) on a ${+(st.sizeMM / 25.4).toFixed(2)} in sticker.` +
-      (design.text ? '' : ' Type words below, or leave it empty and add text later in your own software.');
+    note.textContent = `The opening is ${Math.round(sz.share * 100)}% of the design's width: ${fmt(sz.page)} across on a printed page, and ${fmt(sz.sticker)} (${Math.round(sz.sticker * 25.4)} mm) on a ${+(st.sizeMM / 25.4).toFixed(2)} in sticker.` +
+      (!design.text ? ' Type words below, or leave it empty and add text later in your own software.'
+        : prefs.wordsInFiles === false ? ' The words are a preview only: downloads leave the center empty for your own lettering.' : '');
   }
   function renderHighlight(paths) {
     if (!selected || mode !== 'shapes') { hi.innerHTML = ''; return; }
@@ -208,7 +209,13 @@ function init(root) {
   const nSel = $('#mk-n');
   nSel.innerHTML = SYMMETRY_CHOICES.map(n => `<option value="${n}">${n} slices</option>`).join('');
   const tSel = $('#mk-template');
-  tSel.innerHTML = '<option value="">Choose a template…</option>' + TEMPLATES.map(t => `<option value="${t.slug}">${t.name}</option>`).join('');
+  const tOpts = list => list.map(t => `<option value="${t.slug}">${t.name}</option>`).join('');
+  const framed = TEMPLATES.filter(hasOpenCenter);
+  tSel.innerHTML = '<option value="">Choose a template…</option>' +
+    `<optgroup label="Open center for words">${tOpts(framed)}</optgroup>` +
+    `<optgroup label="Sacred geometry">${tOpts(TEMPLATES.filter(t => t.sacred && !framed.includes(t)))}</optgroup>` +
+    `<optgroup label="Mandalas">${tOpts(TEMPLATES.filter(t => !t.sacred && !framed.includes(t)))}</optgroup>`;
+  if (root.dataset.level) $('#mk-level').value = root.dataset.level;
 
   function syncControls() {
     if (!SYMMETRY_CHOICES.includes(design.n)) {
@@ -226,6 +233,7 @@ function init(root) {
     $('#mk-text1').value = t1;
     $('#mk-text2').value = t2;
     $('#mk-font').value = design.font || 'serif';
+    $('#mk-words-files').checked = prefs.wordsInFiles !== false;
     root.classList.toggle('has-open', design.open > 0);
   }
   nSel.addEventListener('change', () => { commit(); design.n = +nSel.value; renderAll(); });
@@ -263,6 +271,7 @@ function init(root) {
     $(id).addEventListener('change', () => { textCommitted = false; });
   });
   $('#mk-font').addEventListener('change', e => { commit(); design.font = e.target.value; renderArt(); });
+  $('#mk-words-files').addEventListener('change', e => { prefs.wordsInFiles = e.target.checked; savePrefs(prefs); updateOpening(); });
   tSel.addEventListener('change', () => {
     if (!tSel.value) return;
     commit();
@@ -276,7 +285,10 @@ function init(root) {
   $('#mk-random').addEventListener('click', () => {
     commit();
     const lvl = $('#mk-level').value;
+    const { text, font } = design;
     design = randomDesign(Math.floor(Math.random() * 1e9), lvl);
+    // A new frame keeps the words you typed.
+    if (lvl === 'frame') Object.assign(design, { text: text || 'Your Words', font });
     selected = null;
     syncControls();
     renderAll();
@@ -496,6 +508,8 @@ function init(root) {
     try { await fn(); } catch (err) { console.error(err); say('Sorry, that download failed. Try again, or try a simpler design.'); }
     finally { btn.disabled = false; btn.textContent = label; }
   };
+  // The design as the downloads draw it: without the words when they're a preview only.
+  const forFiles = () => (prefs.wordsInFiles === false && design.text ? { ...design, text: '' } : design);
   const hasArt = () => {
     if (design.layers.length) return true;
     say('Draw something or pick a template first.');
@@ -505,7 +519,7 @@ function init(root) {
   $('#mk-dl-png').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
     const px = +$('#mk-png-size').value;
     const transparent = $('#mk-png-clear').checked;
-    const d = transparent ? { ...design, bg: 'transparent' } : design;
+    const d = transparent ? { ...forFiles(), bg: 'transparent' } : forFiles();
     const s = designSVG(d, { width: px, height: px });
     const img = new Image();
     const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
@@ -519,7 +533,7 @@ function init(root) {
   }));
 
   $('#mk-dl-pdf').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
-    const page = pdfContent(design, { page: $('#mk-pdf-page').value, coloring: $('#mk-pdf-coloring').checked });
+    const page = pdfContent(forFiles(), { page: $('#mk-pdf-page').value, coloring: $('#mk-pdf-coloring').checked });
     let compressed = null;
     if (window.CompressionStream) {
       const stream = new Blob([page.content]).stream().pipeThrough(new CompressionStream('deflate'));
@@ -557,7 +571,8 @@ function init(root) {
   $('#mk-dl-svg').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
     const o = cutOptions('mk-svg');
     if (o.style === 'lines') {
-      download(new Blob([designSVG(design, { width: o.size + o.unit })], { type: 'image/svg+xml' }), fileBase + '.svg');
+      const d = $('#mk-svg-clear').checked ? { ...forFiles(), bg: 'transparent' } : forFiles();
+      download(new Blob([designSVG(d, { width: o.size + o.unit })], { type: 'image/svg+xml' }), fileBase + '.svg');
       return;
     }
     const polys = await cutPolys(o);
@@ -585,7 +600,10 @@ function init(root) {
       $(`#${prefix}-thick`).value = mm ? 2 : 0.08;
     });
     const styleSel = $(`#${prefix}-style`);
-    const sync = () => root.querySelectorAll(`[data-cut-for="${prefix}"]`).forEach(el => { el.hidden = styleSel.value === 'lines' && el.dataset.cutOnly === '1'; });
+    const sync = () => root.querySelectorAll(`[data-cut-for="${prefix}"]`).forEach(el => {
+      const lines = styleSel.value === 'lines';
+      el.hidden = (lines && el.dataset.cutOnly === '1') || (!lines && el.dataset.linesOnly === '1');
+    });
     styleSel.addEventListener('change', sync); sync();
   });
 
@@ -607,13 +625,13 @@ function init(root) {
   $('#mk-st-plain').addEventListener('change', e => { $('#mk-st-border').disabled = e.target.checked; });
   $('#mk-dl-st-svg').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
     const o = stickerOptions();
-    download(new Blob([stickerSVG(design, o)], { type: 'image/svg+xml' }), fileBase + '-sticker.svg');
+    download(new Blob([stickerSVG(forFiles(), o)], { type: 'image/svg+xml' }), fileBase + '-sticker.svg');
     if (!o.plain) say('The cut line is the magenta circle on its own CutContour layer. The white beyond it is bleed.', 7000);
   }));
   $('#mk-dl-st-png').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
     const o = stickerOptions();
     const px = Math.min(6000, Math.round((o.sizeMM / 25.4) * 300));
-    const s = stickerSVG(design, { ...o, bleedMM: 0, cutline: false, px });
+    const s = stickerSVG(forFiles(), { ...o, bleedMM: 0, cutline: false, px });
     const img = new Image();
     const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
