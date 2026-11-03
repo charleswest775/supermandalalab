@@ -13,5 +13,8 @@
   "routes": [
     { "pattern": "supermandalalab.com", "custom_domain": true },
     { "pattern": "www.supermandalalab.com", "custom_domain": true }
-  ]
+  ],
+  // Builds of other branches run `wrangler preview`, which needs this block even when empty.
+  // Previews are served on workers.dev with a noindex header.
+  "previews": {}
 }

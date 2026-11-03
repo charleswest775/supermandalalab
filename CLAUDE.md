@@ -51,7 +51,8 @@ Cloudflare Workers Builds watches `main`. Every push to `main` goes live in abou
 `npx wrangler deploy`, which uploads `dist/` with no build step on Cloudflare. **So a push to
 `main` is publishing: ask before pushing to `main` unless Charles asked for it.** Work on a
 branch otherwise. Afterwards, https://supermandalalab.com/version.txt should match
-`dist/version.txt`.
+`dist/version.txt`. Pushes to other branches build a Preview on workers.dev instead
+(`wrangler preview`, which needs the `previews` block in `wrangler.jsonc`).
 
 ## Sharing main with Duet
 
