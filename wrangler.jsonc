@@ -13,5 +13,8 @@
   "routes": [
     { "pattern": "supermandalalab.com", "custom_domain": true },
     { "pattern": "www.supermandalalab.com", "custom_domain": true }
-  ]
+  ],
+  // Pushes to other branches run `npx wrangler preview`, which needs this block. Previews use the
+  // same dist/ from the branch; the routes above stay on production only.
+  "previews": {}
 }
