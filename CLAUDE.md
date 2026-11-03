@@ -40,7 +40,9 @@ Duet, which also pushes to this repo. DEPLOY.md was written for Duet's container
 Cloudflare Workers Builds watches `main`. Every push to `main` goes live in about 30 s: it runs
 `npx wrangler deploy`, which uploads `dist/` with no build step on Cloudflare. **So a push to
 `main` is publishing: ask before pushing to `main` unless Charles asked for it.** Work on a
-branch otherwise. Afterwards, https://supermandalalab.com/version.txt should match
+branch otherwise. A push to any other branch runs `npx wrangler preview` instead: a separate
+Worker Preview of that branch, which needs the `previews` block in `wrangler.jsonc` and leaves the
+live site alone. Afterwards, https://supermandalalab.com/version.txt should match
 `dist/version.txt`.
 
 ## Sharing main with Duet
