@@ -2,7 +2,7 @@
 import {
   R, SHAPES, SYMMETRY_CHOICES, TEMPLATES, buildPaths, designSVG, pathD, smoothStroke, normalizeDesign,
   emptyDesign, ringLayer, randomDesign, templateDesign, cutOutlines, cutSVG, toDXF, pdfContent, pdfFile,
-  compactDesign, countPieces, boundsOf, newId, textSVG, stickerSVG, openingSizes, cleanText, hasOpenCenter, stickerLineMM,
+  compactDesign, countPieces, boundsOf, newId, textSVG, stickerSVG, openingSizes, cleanText, hasOpenCenter, stickerLineMM, cardSVG,
 } from './core.js';
 
 const STORE_KEY = 'sml:design:v1';
@@ -37,6 +37,11 @@ function init(root) {
     else if (tmpl && templateDesign(tmpl)) design = templateDesign(tmpl);
     else design = loadStored() || templateDesign(root.dataset.default || 'lotus-mandala');
     if (shared) history.replaceState(null, '', location.pathname + location.search);
+    // A kind message starts with one in the middle: the page's own on its starting frame, or on a design without words.
+    if (goal === 'kind') {
+      if ((!shared && tmpl === root.dataset.template) || !design.text) design.text = message(root.dataset.text);
+      if (design.text && !design.open) design.open = KIND_OPEN;
+    }
     // A sticker starts in the look its template was made for.
     const look = !shared && TEMPLATES.find(t => t.slug === tmpl)?.sticker;
     if (look) setVal('#mk-st-look', look);
@@ -91,7 +96,7 @@ function init(root) {
     $('#mk-bg').setAttribute('fill', design.bg === 'transparent' ? '#ffffff' : design.bg);
     renderHighlight(paths);
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => store(design), 300);
+    saveTimer = setTimeout(() => { store(design); refreshShare(); }, 300);
     $('#mk-empty').hidden = design.layers.length > 0;
     updateOpening();
     updateStatus();
@@ -99,11 +104,12 @@ function init(root) {
   // The open center's size, as it will come out on a page and on a sticker.
   function updateOpening() {
     const out = $('#mk-open-out'), note = $('#mk-open-note');
-    if (!out || !note) return;
-    if (!design.open) { out.textContent = 'Off'; note.textContent = 'Slide to leave the middle empty for a name, a word or a date.'; return; }
+    if (!out) return;
+    if (!design.open) { out.textContent = 'Off'; if (note) note.textContent = 'Slide to leave the middle empty for a name, a word or a date.'; return; }
+    out.textContent = Math.round(design.open);
+    if (!note) return;
     const st = stickerOptions();
     const sz = openingSizes(design, st.sizeMM / 25.4, st.borderMM / 25.4);
-    out.textContent = Math.round(design.open);
     if (!sz) return;
     const fmt = v => v >= 1 ? v.toFixed(1) + ' in' : v.toFixed(2) + ' in';
     note.textContent = `The opening is ${Math.round(sz.share * 100)}% of the design's width: ${fmt(sz.page)} across on a printed page, and ${fmt(sz.sticker)} (${Math.round(sz.sticker * 25.4)} mm) on a ${+(st.sizeMM / 25.4).toFixed(2)} in sticker.` +
@@ -300,17 +306,27 @@ function init(root) {
     renderAll();
     say('Template loaded. Undo brings back your last design.');
   });
-  // A goal's starting designs load in place. On the words page, a new frame keeps the words you typed.
+  // A goal's starting designs load in place, with their own words if they have some. On the words page,
+  // a new frame keeps the words you typed.
   $$('[data-start]').forEach(b => b.addEventListener('click', () => {
     commit();
     const { text } = design;
     design = templateDesign(b.dataset.start);
-    if (goal === 'words' && text) design.text = text;
+    if (b.dataset.words) design.text = message(b.dataset.words);
+    else if (goal === 'words' && text) design.text = text;
     if (b.dataset.look) setVal('#mk-st-look', b.dataset.look);
     selected = null;
     syncControls();
     renderAll();
     say('Loaded. Undo brings back your last design.');
+  }));
+  // A suggested kind message replaces the words.
+  $$('[data-msg]').forEach(b => b.addEventListener('click', () => {
+    commit();
+    design.text = message(b.dataset.msg);
+    if (!design.open) design.open = KIND_OPEN;
+    syncControls();
+    renderArt();
   }));
   on('#mk-random', 'click', () => {
     commit();
@@ -519,14 +535,6 @@ function init(root) {
 
   // ----- downloads -----
   const fileBase = 'mandala-supermandalalab';
-  function download(blob, name) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    track(name.split('.').pop());
-  }
   let clipperPromise = null;
   function clipper() {
     if (window.ClipperLib) return Promise.resolve(window.ClipperLib);
@@ -546,8 +554,8 @@ function init(root) {
     try { await fn(); } catch (err) { console.error(err); say('Sorry, that download failed. Try again, or try a simpler design.'); }
     finally { btn.disabled = false; btn.textContent = label; }
   };
-  // The design as the downloads draw it: without the words when they're a preview only.
-  const forFiles = () => (prefs.wordsInFiles === false && design.text ? { ...design, text: '' } : design);
+  // The design as the downloads draw it: without the words when they're a preview only. A kind message keeps them.
+  const forFiles = () => (goal !== 'kind' && prefs.wordsInFiles === false && design.text ? { ...design, text: '' } : design);
   const hasArt = () => {
     if (design.layers.length) return true;
     say('Draw something or pick a template first.');
@@ -558,16 +566,7 @@ function init(root) {
     const px = +$('#mk-png-size').value;
     const transparent = $('#mk-png-clear').checked;
     const d = transparent ? { ...forFiles(), bg: 'transparent' } : forFiles();
-    const s = designSVG(d, { width: px, height: px });
-    const img = new Image();
-    const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
-    const c = document.createElement('canvas');
-    c.width = c.height = px;
-    c.getContext('2d').drawImage(img, 0, 0, px, px);
-    URL.revokeObjectURL(url);
-    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
-    download(blob, fileBase + '.png');
+    download(await rasterize(designSVG(d, { width: px, height: px }), px, px), fileBase + '.png');
   }));
 
   $('#mk-dl-pdf').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
@@ -670,28 +669,86 @@ function init(root) {
   $('#mk-dl-st-png').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
     const o = stickerOptions();
     const px = Math.min(6000, Math.round((o.sizeMM / 25.4) * 300));
-    const s = stickerSVG(forFiles(), { ...o, bleedMM: 0, cutline: false, px });
-    const img = new Image();
-    const url = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
-    const c = document.createElement('canvas');
-    c.width = c.height = px;
-    c.getContext('2d').drawImage(img, 0, 0, px, px);
-    URL.revokeObjectURL(url);
-    download(await new Promise(res => c.toBlob(res, 'image/png')), fileBase + '-sticker.png');
+    download(await rasterize(stickerSVG(forFiles(), { ...o, bleedMM: 0, cutline: false, px }), px, px), fileBase + '-sticker.png');
   }));
 
-  $('#mk-share').addEventListener('click', async e => {
+  // ----- share -----
+  // A link that opens the design on /for-you/, and a picture of it to text or post. Each is made once per design.
+  const shareText = goal === 'kind' ? 'I made you a mandala.' : 'I made this mandala.';
+  let link = null, card = null;
+  function shareLink() {
+    const key = JSON.stringify(compactDesign(forFiles()));
+    if (link?.key !== key) link = { key, url: shareURL(forFiles(), '/for-you/') };
+    return link.url;
+  }
+  function shareCard() {
+    const o = { story: $('#mk-card-size').value === 'story', credit: $('#mk-card-credit').checked };
+    const key = JSON.stringify([compactDesign(forFiles()), o]);
+    if (card?.key !== key) {
+      const h = o.story ? 1920 : 1080;
+      const c = card = { key, file: rasterize(cardSVG(forFiles(), o), 1080, h)
+        .then(blob => new File([blob], `${fileBase}${o.story ? '-story' : ''}.png`, { type: 'image/png' })) };
+      c.file.catch(() => { if (card === c) card = null; });
+    }
+    return card.file;
+  }
+  // The links carry the design, so they change with it. The picture is made ahead while the share box is in view,
+  // so a phone's share sheet opens straight away.
+  let shareInView = false;
+  async function refreshShare() {
+    if (!design) return;
+    const url = await shareLink();
+    const body = `${shareText} ${url}`;
+    const href = {
+      sms: `sms:?&body=${encodeURIComponent(body)}`,
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(body)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      x: `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`,
+      email: `mailto:?subject=${encodeURIComponent(goal === 'kind' ? 'A mandala for you' : 'A mandala I made')}&body=${encodeURIComponent(`${shareText}\n\n${url}`)}`,
+    };
+    $$('[data-share]').forEach(a => { a.href = href[a.dataset.share]; });
+    const kind = $('#mk-kind-link');
+    if (kind) kind.href = await shareURL(design, '/kindness-mandala/');
+    if (shareInView && design.layers.length) shareCard().catch(() => {});
+  }
+  const shareBox = $('#mk-share-box');
+  if (window.IntersectionObserver) {
+    new IntersectionObserver(es => { shareInView = es[es.length - 1].isIntersecting; if (shareInView) refreshShare(); }).observe(shareBox);
+  }
+  const shareBtn = $('#mk-share');
+  if (!navigator.share) shareBtn.hidden = true;
+  ['pointerenter', 'pointerdown', 'focus'].forEach(evt => shareBtn.addEventListener(evt, () => { if (design.layers.length) shareCard().catch(() => {}); }));
+  shareBtn.addEventListener('click', async () => {
     if (!hasArt()) return;
-    const url = await shareURL(design, '/');
+    const [url, file] = await Promise.all([shareLink(), shareCard().catch(() => null)]);
+    try {
+      if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text: `${shareText} ${url}` });
+      else await navigator.share({ text: shareText, url });
+      track('share');
+    } catch (err) {
+      if (err.name !== 'AbortError') copyLink(url);
+    }
+  });
+  on('#mk-copy', 'click', async () => { if (hasArt()) copyLink(await shareLink()); });
+  shareBox.addEventListener('click', e => {
+    const a = e.target.closest('[data-share]');
+    if (!a) return;
+    if (!hasArt() || !a.href) { e.preventDefault(); return; }
+    track('share-' + a.dataset.share);
+  });
+  $('#mk-dl-card').addEventListener('click', e => hasArt() && busy(e.currentTarget, async () => {
+    const file = await shareCard();
+    download(file, file.name);
+  }));
+  async function copyLink(url) {
     try {
       await navigator.clipboard.writeText(url);
-      say('Link copied. Anyone with it can open and edit a copy of this mandala.');
+      say('Link copied. It opens your mandala for anyone you send it to.');
     } catch {
       prompt('Copy this link:', url);
     }
-    track('share');
-  });
+    track('share-link');
+  }
 
   // ----- live checks on the sticker and cut pages -----
   const status = $('#mk-status');
@@ -746,6 +803,34 @@ function init(root) {
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
+  }
+}
+
+// Words for the kind message page, with | between the two lines.
+const message = s => cleanText((s || '').replace(/\|/g, '\n'));
+// How wide to open the center of a design that has no room for a kind message.
+const KIND_OPEN = 220;
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  track(name.split('.').pop());
+}
+// An SVG as a PNG of w by h pixels.
+async function rasterize(svg, w, h) {
+  const img = new Image();
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return await new Promise(res => c.toBlob(res, 'image/png'));
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -806,8 +891,34 @@ async function readHashDesign() {
   } catch { return null; }
 }
 
+// /for-you/: a shared mandala, as the person it was sent to sees it, with ways to keep it and to make one back.
+async function gift(root) {
+  const $ = sel => root.querySelector(sel);
+  const shared = await readHashDesign();
+  const d = shared || { ...templateDesign('heart-frame-mandala'), text: 'For you' };
+  $('#gift-art').innerHTML = designSVG(d, { title: d.text ? `A mandala with the words ${d.text.replace('\n', ' ')}` : 'A mandala' });
+  root.classList.add('is-ready');
+  // Without a shared design, the page shows a sample and asks you to make one.
+  if (!shared) { $('#gift-title').textContent = 'Make someone a mandala'; return; }
+  root.classList.add('has-gift');
+  if (!d.text) $('#gift-title').textContent = 'Someone shared a mandala with you';
+  $('#gift-color').href = await shareURL(d, '/coloring-page-maker/');
+  $('#gift-edit').href = await shareURL(d, d.text ? '/kindness-mandala/' : '/');
+  // On a phone the share sheet saves the picture to Photos; elsewhere it downloads.
+  const file = rasterize(cardSVG(d), 1080, 1080).then(blob => new File([blob], 'mandala-for-you.png', { type: 'image/png' }));
+  $('#gift-save').addEventListener('click', async () => {
+    const f = await file;
+    if (navigator.canShare?.({ files: [f] })) {
+      try { await navigator.share({ files: [f] }); track('gift-save'); return; } catch (err) { if (err.name === 'AbortError') return; }
+    }
+    download(f, f.name);
+  });
+}
+
 // Start last, so every helper above is initialized first.
 const makerRoot = document.getElementById('maker');
 if (makerRoot) init(makerRoot);
+const giftRoot = document.getElementById('gift');
+if (giftRoot) gift(giftRoot);
 
 export { emptyDesign };

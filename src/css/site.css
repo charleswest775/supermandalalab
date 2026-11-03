@@ -139,6 +139,14 @@ p { margin: 0 0 1em; }
 .mk-machine label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .mk-machine input { accent-color: var(--accent); margin: 0; }
 .maker[data-machine="laser"] .mk-dl[data-machine="cricut"], .maker[data-machine="cricut"] .mk-dl[data-machine="laser"] { display: none; }
+.mk-msgs { display: flex; flex-wrap: wrap; gap: 6px; }
+.mk-panel .mk-msgs button { border-radius: 999px; padding: 5px 11px; font-size: .86rem; background: var(--paper); }
+.mk-panel .mk-msgs button:hover { border-color: var(--accent); }
+.mk-share-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.mk-share-links a { font: 500 .88rem var(--sans); border: 1px solid var(--line); border-radius: 9px; padding: 6px 11px; color: var(--ink); text-decoration: none; background: #fff; }
+.mk-share-links a:hover { border-color: var(--ink-2); color: var(--ink); }
+.mk-panel .mk-share-links button { font-size: .88rem; padding: 6px 11px; }
+.maker[data-goal="kind"] .mk-kind-nudge { display: none; }
 .mk-if-words { display: none; }
 .maker.show-words .mk-if-words { display: flex; flex-direction: column; gap: 10px; }
 .mk-panel .mk-back { align-self: flex-start; }
@@ -165,7 +173,7 @@ p { margin: 0 0 1em; }
 .goals-q { font: 600 1.05rem var(--sans); color: var(--ink-2); margin: 18px 0 0; }
 @media (max-width: 520px) {
   .goals { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .goals li:last-child { grid-column: 1 / -1; }
+  .goals li:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .goals a { gap: 8px; padding: 8px; }
   .goals img { width: 40px; height: 40px; }
   .goals strong { font-size: .92rem; }
@@ -174,6 +182,16 @@ p { margin: 0 0 1em; }
 .use-for { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
 .use-for > span { font-weight: 600; color: var(--ink-2); margin-right: 4px; }
 .use-for .btn { padding: 7px 14px; font-size: .92rem; }
+
+/* /for-you/: a shared mandala */
+.gift { text-align: center; padding: 24px 0 8px; }
+.gift-art { width: min(560px, 100%); aspect-ratio: 1; margin: 0 auto 6px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: grid; place-items: center; }
+.gift-art svg { display: block; width: 100%; height: 100%; }
+.gift:not(.is-ready) .gift-art::after { content: "Opening your mandala…"; color: var(--muted); }
+.gift .cta-row { justify-content: center; }
+.gift:not(.has-gift) .gift-keep { display: none; }
+.gift-back { max-width: 34em; margin: 12px auto 0; }
+.gift-back h2 { margin-top: 1.2em; }
 
 /* content */
 .section { padding: 8px 0 24px; }

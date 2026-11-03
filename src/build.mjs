@@ -119,9 +119,9 @@ function writeJPEGFromPNG(rel, pngBuf) {
 }
 
 // ---------- share links for "edit this design" ----------
-function editLink(d) {
+function editLink(d, at = '/') {
   const raw = zlib.deflateRawSync(Buffer.from(JSON.stringify(compactDesign(d))));
-  return '/#d=z' + raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return at + '#d=z' + raw.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // ---------- layout ----------
@@ -129,6 +129,7 @@ function editLink(d) {
 // controls and files. The home page, the templates and sacred geometry keep the full maker.
 const GOALS = [
   { key: 'coloring', name: 'Coloring page', nav: 'Coloring pages', path: '/coloring-page-maker/', blurb: 'Print a PDF at Letter or A4', img: '/img/templates/easy-mandala-for-kids.svg' },
+  { key: 'kind', name: 'Kind message', nav: 'Kind messages', path: '/kindness-mandala/', blurb: 'Text or post one to someone', img: '/img/kind/heart-frame-mandala.svg' },
   { key: 'sticker', name: 'Sticker', nav: 'Stickers', path: '/mandala-stickers/', blurb: 'Die-cut sticker SVG or PNG', img: '/img/stickers/flower-of-life-mandala.svg' },
   { key: 'words', name: 'Words in the center', nav: 'Words', path: '/mandala-frames/', blurb: 'Wall tags, signs and cards', img: '/img/templates/petal-frame-mandala.svg' },
   { key: 'cut', name: 'Cut file', nav: 'Cut files', path: '/svg-for-cricut/', blurb: 'Cricut, laser or plasma', img: '/img/templates/mystic-rose-mandala.svg' },
@@ -192,7 +193,7 @@ ${o.body}
 <footer class="site-foot"><div class="wrap">
 <div class="cols">
 <div><h4>${BRAND}</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
-<div><h4>Make</h4><ul><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li><li><a href="/">The full mandala maker</a></li></ul></div>
+<div><h4>Make</h4><ul><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/kindness-mandala/">Kind message mandalas</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li><li><a href="/">The full mandala maker</a></li></ul></div>
 <div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
 <div><h4>Learn</h4><ul>${ARTICLES.map(a => `<li><a href="/learn/${a.slug}/">${esc(a.short)}</a></li>`).join('')}<li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
 </div>
@@ -208,6 +209,9 @@ ${o.body}
 // The maker's controls by name, so the full maker and each goal can lay out only the ones they need.
 // app.js finds them by id and skips any a page leaves out.
 const row = (label, input, out = '') => `<label class="mk-row"><span>${label}</span>${input}${out}</label>`;
+// Kind messages to tap, with | between the two lines. Two short lines read biggest in the middle.
+const KIND_MESSAGES = ['You are|loved', 'Thinking|of you', 'Thank|you', 'Proud|of you', 'You\'ve|got this', 'You|matter',
+  'Sending|love', 'Get well|soon', 'Happy|birthday', 'Miss|you', 'You are|enough', 'Breathe'];
 const CTRL = {
   n: row('Symmetry', '<select id="mk-n"></select>'),
   mirror: '<label class="mk-check"><input type="checkbox" id="mk-mirror" checked> Mirror inside each slice</label>',
@@ -222,6 +226,7 @@ const CTRL = {
   wordsFiles: '<label class="mk-check"><input type="checkbox" id="mk-words-files" checked> Put the words in downloads</label>',
   openNote: '<p id="mk-open-note" class="mk-note">Slide to leave the middle empty for a name, a word or a date.</p>',
   look: '<label class="mk-row" style="grid-template-columns:auto 1fr"><span>Look</span><select id="mk-st-look"><option value="mine">My colors</option><option value="night">Night glow (gold on dark)</option></select></label>',
+  msgs: `<div class="mk-msgs" role="group" aria-label="Kind messages">${KIND_MESSAGES.map(m => `<button type="button" data-msg="${esc(m)}">${esc(m.replace('|', ' '))}</button>`).join('')}</div>`,
 };
 const levelSelect = frame => `<select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option><option value="sacred">Sacred geometry</option>${frame ? '<option value="frame">Open center for words</option>' : ''}</select>`;
 const DL = {
@@ -254,7 +259,15 @@ const DL = {
       <div class="mk-inline"><button type="button" id="mk-dl-st-svg" class="mk-primary">Sticker SVG</button><button type="button" id="mk-dl-st-png">Sticker PNG</button></div>
       <p class="mk-hint" style="margin:0">The SVG has bleed and a cut line on its own CutContour layer. The PNG is 300 dpi and transparent outside the border, for sticker printers.</p>
     </div>`,
-  share: '<div class="mk-dl"><h3>Share</h3><p class="mk-hint" style="margin:0">Copy a link that opens this mandala for anyone.</p><button type="button" id="mk-share">Copy share link</button></div>',
+  // app.js fills in the links, which carry the design.
+  share: `<div class="mk-dl" id="mk-share-box"><h3>Share <small>text it, post it, send it</small></h3>
+      <button type="button" id="mk-share" class="mk-primary">Share the picture and link</button>
+      <div class="mk-share-links"><a data-share="sms">Text</a><a data-share="whatsapp" target="_blank" rel="noopener">WhatsApp</a><a data-share="facebook" target="_blank" rel="noopener">Facebook</a><a data-share="x" target="_blank" rel="noopener">X</a><a data-share="email">Email</a><button type="button" id="mk-copy">Copy link</button></div>
+      <div class="mk-inline"><select id="mk-card-size" aria-label="Picture shape"><option value="square">Square, for posts and texts</option><option value="story">Story, for Instagram and WhatsApp</option></select><button type="button" id="mk-dl-card">Save picture</button></div>
+      <label class="mk-check"><input type="checkbox" id="mk-card-credit" checked> Add supermandalalab.com under it</label>
+      <p class="mk-hint" style="margin:0">The link opens your mandala on any phone or computer, ready to save or print and color. The design and words travel inside the link, so Super Mandala Lab never stores them.</p>
+      <p class="mk-hint mk-kind-nudge" style="margin:0">Or <a id="mk-kind-link" href="/kindness-mandala/">put a kind message in the middle</a> and send it to someone.</p>
+    </div>`,
 };
 const SHAPES_PANEL = `<div class="mk-inline"><select id="mk-add-shape" aria-label="Shape to add"></select><button type="button" id="mk-add" class="mk-primary">Add</button></div>
     <p class="mk-hint">Each ring repeats a shape around the circle. Sacred geometry figures, like the Flower of Life and Metatron's Cube, sit at the center. Tap a layer to change its size, distance, twist and fill.</p>
@@ -304,7 +317,7 @@ const goalPanel = (key, machine) => {
     </section>
     <section class="mk-step" id="mk-file"><h3><span>3</span> ${g.title}</h3>
       ${typeof g.file === 'function' ? g.file(machine) : g.file}
-      <details class="mk-more"><summary>Other formats</summary>${g.more}${DL.share}</details>
+      <details class="mk-more"><summary>Other formats</summary>${g.more}${g.file === DL.share ? '' : DL.share}</details>
     </section>
   </div>
   <div class="mk-tab-body" data-panel="shapes" hidden>
@@ -316,7 +329,7 @@ const goalPanel = (key, machine) => {
 
 // o.goal picks a goal panel (coloring, sticker, words or cut); without one, the full maker.
 function maker(o = {}) {
-  const attrs = { template: o.template, 'focus-tab': o.tab, goal: o.goal, machine: o.goal === 'cut' ? (o.machine || 'cricut') : '',
+  const attrs = { template: o.template, text: o.text, 'focus-tab': o.tab, goal: o.goal, machine: o.goal === 'cut' ? (o.machine || 'cricut') : '',
     surprise: o.goal && GOAL_UI[o.goal].surprise, 'svg-style': o.goal && GOAL_UI[o.goal].svgStyle };
   return `<section id="maker" class="maker wrap" data-mode="draw" data-clipper="${CLIPPER_URL}"${Object.entries(attrs).map(([k, v]) => v ? ` data-${k}="${v}"` : '').join('')} aria-label="Mandala maker">
 <div class="mk-stage">
@@ -328,7 +341,7 @@ function maker(o = {}) {
     <button type="button" id="mk-redo" disabled title="Redo (Ctrl+Shift+Z)">Redo</button>
     <button type="button" id="mk-clear">Clear</button>
     <span class="grow"></span>
-    <button type="button" class="mk-primary" data-tab="download">Download</button>
+    <button type="button" class="mk-primary" data-tab="download">${o.goal === 'kind' ? 'Send' : 'Download'}</button>
   </div>
   <div class="mk-canvas">
     <svg id="mk-svg" viewBox="-512 -512 1024 1024" role="img" aria-label="Your mandala. Draw here.">
@@ -399,10 +412,19 @@ const CUT_STARTERS = MANDALA_TEMPLATES.concat(SACRED_TEMPLATES).map(t => ({ t, p
 console.log('Cut starters:', CUT_STARTERS.map(c => `${c.t.slug} ${c.pieces}`).join(', '));
 
 // A starting design in a goal panel: loads in place, replacing the design (Undo brings it back).
-const startTile = (slug, img, note = '') => {
+// words: its own words, with | between the lines.
+const startTile = (slug, img, note = '', words = '') => {
   const t = TEMPLATES.find(x => x.slug === slug);
-  return `<button type="button" class="mk-start" data-start="${slug}"${t.sticker ? ` data-look="${t.sticker}"` : ''} aria-label="${esc(t.name)}${note ? `, ${note}` : ''}" title="${esc(t.name)}"><img src="${img}" alt="" width="72" height="72" loading="lazy">${note ? `<small>${note}</small>` : ''}</button>`;
+  const name = words ? `${words.replace('|', ' ')} in the ${t.name}` : t.name;
+  return `<button type="button" class="mk-start" data-start="${slug}"${words ? ` data-words="${esc(words)}"` : ''}${t.sticker ? ` data-look="${t.sticker}"` : ''} aria-label="${esc(name)}${note ? `, ${note}` : ''}" title="${esc(name)}"><img src="${img}" alt="" width="72" height="72" loading="lazy">${note ? `<small>${note}</small>` : ''}</button>`;
 };
+// Kind messages, each in a frame: the kind message page's starting designs, and its examples.
+const KIND = [['heart-frame-mandala', 'You are|loved'], ['petal-frame-mandala', 'Thinking|of you'], ['laurel-wreath-mandala', 'Thank|you'],
+  ['sunburst-frame-mandala', 'You\'ve|got this'], ['lotus-frame-mandala', 'Breathe'], ['dot-frame-mandala', 'You|matter'],
+  ['arch-frame-mandala', 'Happy|birthday'], ['star-frame-mandala', 'Proud|of you']]
+  .map(([slug, words]) => ({ slug, words, d: { ...templateDesign(slug), text: words.replace('|', '\n') } }));
+for (const k of KIND) write(`img/kind/${k.slug}.svg`, designSVG(k.d, { title: `${k.words.replace('|', ' ')}: a kind message mandala`, paths: lean(k.d) }));
+const kindTiles = list => `<ul class="tiles">${list.map(k => `<li><a href="${editLink(k.d, '/kindness-mandala/')}"><img src="/img/kind/${k.slug}.svg" alt="A mandala with the words ${esc(k.words.replace('|', ' '))} in the middle" width="300" height="300" loading="lazy"><span>${esc(k.words.replace('|', ' '))}</span></a></li>`).join('')}</ul>`;
 const GOAL_UI = {
   coloring: {
     starters: ['easy-mandala-for-kids', 'simple-mandala', 'leaf-mandala', 'lotus-mandala', 'snowflake-mandala', 'flower-of-life-mandala', 'mystic-rose-mandala', 'intricate-mandala']
@@ -422,6 +444,15 @@ const GOAL_UI = {
     title: 'Get your sticker',
     file: DL.sticker(false),
     more: DL.pdf + DL.png + DL.svg() + DL.dxf(),
+  },
+  kind: {
+    starters: KIND.map(k => startTile(k.slug, `/img/kind/${k.slug}.svg`, '', k.words)),
+    surprise: 'frame',
+    after: '<p class="mk-note">Surprise me makes a new frame and keeps your message.</p>',
+    make: `${CTRL.msgs}<p class="mk-note">Tap a message, or type your own. Two short lines read best on a phone.</p>${CTRL.words}${CTRL.ink}${CTRL.bg}${CTRL.open}`,
+    title: 'Send it',
+    file: DL.share,
+    more: DL.png + DL.pdf + DL.sticker(true) + DL.svg() + DL.dxf(),
   },
   words: {
     starters: FRAME_TEMPLATES.slice(0, 8).map(t => startTile(t.slug, `/img/templates/${t.slug}.svg`)),
@@ -523,6 +554,10 @@ ${maker()}
 <p>Add the Flower of Life, the Seed of Life, Metatron's Cube, golden spirals, a mystic rose and more as a single layer, then ring it with petals and arches. Every figure is drawn from true circles and straight lines, so it prints crisply and cuts cleanly. See the <a href="/sacred-geometry/">sacred geometry generator and free downloads</a>.</p>
 ${templateTiles(null, SACRED_TEMPLATES)}
 
+<h2>Send a kind message</h2>
+<p>Put a kind word in the middle of a mandala and send it to someone: a text to a friend having a hard week, a thank-you to a teacher, a birthday post. It takes a couple of minutes, and the link opens on any phone. Start in the <a href="/kindness-mandala/">kind message maker</a>.</p>
+${kindTiles(KIND.slice(0, 5))}
+
 <h2>Frames for words</h2>
 <p>Simple, bold mandalas with the center left open for a name, a quote or a date, made for wall tags, signs, cards and gifts. Type your words in the maker, or download the frame alone and letter it in your own software. See all the <a href="/mandala-frames/">mandala frames for words</a>.</p>
 ${templateTiles(null, FRAME_TEMPLATES.filter(t => t.slug !== 'name-mandala').slice(0, 5))}
@@ -554,6 +589,7 @@ ${templateTiles(null, MANDALA_TEMPLATES)}
 <li>Stencils, tattoo sketches and embroidery patterns</li>
 <li>Round <a href="/mandala-stickers/">stickers</a> and name gifts</li>
 <li>Wall tags, signs and cards with words in an <a href="/mandala-frames/">open center</a></li>
+<li><a href="/kindness-mandala/">Kind messages</a> to text or post for someone</li>
 </ul>
 </div>
 <div>
@@ -565,7 +601,7 @@ ${templateTiles(null, MANDALA_TEMPLATES)}
 <li>Adjustable detail, from simple shapes for kids to intricate designs for adults</li>
 <li>Saves in your browser, so you can come back to your work</li>
 <li>Works with a mouse, a touch screen or a stylus</li>
-<li>Share links that open your mandala for anyone</li>
+<li>Share by text, WhatsApp, email or social media, with a picture sized for posts and stories</li>
 <li>An open center for a name, a word or a date, with the opening's size shown for print and stickers</li>
 <li>Die-cut sticker files with bleed and a CutContour cut line</li>
 </ul>
@@ -864,6 +900,86 @@ ${sizes.map(({ t, share }) => `<tr><td><a href="/templates/${t.slug}/">${esc(t.n
   });
 }
 
+// Kind messages: a mandala with a kind word in the middle, to text, post or print for someone.
+{
+  const faq = [
+    ['Who can see my message?', 'Only the people you send it to. The design and the words travel inside the link itself, so Super Mandala Lab never stores them. Anyone who has the link can open it, so post it publicly only if you mean to.'],
+    ['How do I send it in a text?', 'On a phone, tap Share the picture and link and pick Messages: they get the picture, and a link that opens it. On a computer, use Text or Copy link, or save the picture and attach it.'],
+    ['Can I post it on Instagram?', 'Yes. Choose Story under Send it, save the picture and post it from your phone. Or tap Share on your phone and pick Instagram.'],
+    ['Do they need an account to open it?', 'No. The link opens the mandala in any web browser, where they can save it, print it to color in, or make one back. There is nothing to sign up for.'],
+    ['Can I print it as a card?', 'Yes. Under Other formats, download a PDF at Letter or A4 to print and fold, or a round sticker for an envelope or a gift.'],
+    ['Can I write a longer message?', 'The middle takes two lines of up to 30 characters each, sized to fit. Two short lines read best on a phone. For more, write it in the text or the post, and let the mandala carry the short version.'],
+  ];
+  const kD = KIND[0].d;
+  write('img/og/kindness-mandala.png', png(socialCard(kD, 'Send Kindness in a Mandala', 'Text it, post it or print it. Free.'), 1200));
+  page({
+    path: '/kindness-mandala/',
+    title: 'Kindness Mandala: Send a Mandala With a Kind Message, Free',
+    ogTitle: 'Send a Kind Message in a Mandala',
+    description: 'Make a mandala with a kind word in the middle, like You are loved or Thinking of you, and text it, post it or print it for someone. Free, no signup.',
+    maker: true, ogImage: '/img/og/kindness-mandala.png',
+    crumbs: [['/', 'Home'], ['/kindness-mandala/', 'Kind messages']],
+    sitemapImages: KIND.map(k => `${SITE}/img/kind/${k.slug}.svg`),
+    schema: [faqSchema(faq)],
+    body: `<div class="wrap hero"><h1>Send a Kind Message in a Mandala</h1><p class="lede">Put a kind word in the middle of a mandala, then text it, post it or print it for someone who could use it. It takes a couple of minutes, and it's free with no signup.</p></div>
+${maker({ template: KIND[0].slug, text: KIND[0].words, goal: 'kind' })}
+<div class="wrap section">
+<h2>Kind messages to start from</h2>
+<p>Open one, change the words or the colors, and send it.</p>
+${kindTiles(KIND)}
+</div>
+<div class="wrap section narrow article">
+<h2>How to send a kind mandala</h2>
+<ol class="steps">
+<li><strong>Pick a frame.</strong> Each starting design opens with a message in the middle. Surprise me makes a new frame and keeps your words.</li>
+<li><strong>Write your message.</strong> Tap one of the suggestions, or type up to two short lines of your own.</li>
+<li><strong>Make it theirs.</strong> Pick a line color and a background they'd like, and serif or sans serif lettering.</li>
+<li><strong>Send it.</strong> On a phone, Share sends the picture and a link by text, WhatsApp or any app. Or save a square picture for a post, or a story for Instagram.</li>
+</ol>
+<h2>Ideas for kind messages</h2>
+<ul>
+<li><strong>To lift someone up:</strong> You've got this. Proud of you. Keep going. You are enough.</li>
+<li><strong>When things are hard:</strong> Thinking of you. Sending love. Here for you. Get well soon.</li>
+<li><strong>To say thanks:</strong> Thank you. Grateful for you. You made my day.</li>
+<li><strong>To celebrate:</strong> Happy birthday. Congratulations. Best day ever.</li>
+<li><strong>For calm:</strong> Breathe. One day at a time. Be gentle with yourself.</li>
+<li><strong>Just because:</strong> You matter. Miss you. Glad you exist.</li>
+</ul>
+<p>A name works too: put it on the first line and the message on the second, like <em>Mom</em> and <em>Thank you</em>.</p>
+<h2>What they see</h2>
+<p>The link opens a page with your mandala and its message, and nothing else to click away to. From there they can save the picture, print it as a coloring page and color it in, or make a mandala to send back. The design and the words travel inside the link, so nothing is stored on our side.</p>
+<h2>For classrooms and groups</h2>
+<p>On a kindness day, have each person make a mandala for someone else in the group, then print them as <a href="/coloring-page-maker/">coloring pages</a> and swap. The words print in the middle, and the rings around them are ready to color.</p>
+<h2>Questions</h2>${faqHTML(faq)}
+</div>`,
+  });
+
+  // Where a shared link opens: the mandala, as the person it was sent to sees it. app.js draws it from the link.
+  write('img/og/for-you.png', png(socialCard({ ...kD, text: 'For you' }, 'A Mandala for You', 'Open it to see the message inside.'), 1200));
+  page({
+    path: '/for-you/', noindex: true, maker: true,
+    title: 'A Mandala Made for You | Super Mandala Lab',
+    ogTitle: 'A mandala made for you',
+    description: 'Someone made you a mandala. Open it to see it, save it, print it to color in, or make one back. Free at Super Mandala Lab.',
+    ogImage: '/img/og/for-you.png', ogImageAlt: 'A heart mandala with the words For you in the middle',
+    body: `<div class="wrap gift" id="gift">
+<h1 id="gift-title">A mandala made for you</h1>
+<div class="gift-art" id="gift-art"></div>
+<div class="cta-row gift-keep"><button type="button" class="btn" id="gift-save">Save the picture</button><a class="btn ghost" id="gift-color" href="/coloring-page-maker/">Print it to color in</a></div>
+<div class="gift-back">
+<h2>Pass it on</h2>
+<p>Make a mandala with a kind word in the middle for someone else. It takes a couple of minutes, it's free, and there's nothing to sign up for.</p>
+<p><a class="btn" href="/kindness-mandala/">Make one for someone</a></p>
+<p class="meta gift-keep"><a id="gift-edit" href="/">Change this one in the maker</a></p>
+</div>
+</div>
+<div class="wrap narrow article">
+<h2>What is this?</h2>
+<p>Someone made this mandala at Super Mandala Lab, a free mandala maker, and sent you the link. The design and any words in it travel inside the link itself, so nothing about it is stored on our side.</p>
+</div>`,
+  });
+}
+
 // Mandala stickers
 {
   const faq = [
@@ -1129,6 +1245,7 @@ write('llms.txt', `# ${BRAND}
 - [Mandala SVG for Cricut](${SITE}/svg-for-cricut/)
 - [Mandala DXF for laser and plasma](${SITE}/dxf-for-laser-and-plasma/)
 - [Mandala coloring page maker](${SITE}/coloring-page-maker/)
+- [Kind message mandalas](${SITE}/kindness-mandala/): a mandala with a kind word in the middle, like You are loved, to text, post or print for someone
 - [Sacred geometry generator](${SITE}/sacred-geometry/): the Flower of Life, Seed of Life, Metatron's Cube, golden spirals and more, with free SVG, DXF and PDF downloads
 - [Mandala sticker maker](${SITE}/mandala-stickers/): round die-cut stickers as SVG with a CutContour cut line, or 300 dpi PNG, with free sticker downloads
 
