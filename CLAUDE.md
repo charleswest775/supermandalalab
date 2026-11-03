@@ -20,7 +20,14 @@ Duet, which also pushes to this repo. DEPLOY.md was written for Duet's container
   are named pieces (`CTRL`, `DL`), and app.js skips any a page leaves out.
 - `src/content.mjs`: `FAQ` and the `ARTICLES` (guides).
 - `src/build.mjs`: the pages, sitemap, schema and assets, written to `dist/`. `/sacred-geometry/` also writes
-  free downloads of each figure to `dist/files/sacred-geometry/`.
+  free downloads of each figure to `dist/files/sacred-geometry/`. Coloring pages describe
+  themselves from their design data (`coloringFacts`); the `about` and `tips` of each level in
+  `LEVELS` describe what `randomDesign` makes, so keep them true if it changes.
+- `src/seo-check.mjs`: checks `dist/` for what search engines read (titles, descriptions,
+  canonicals, one H1, structured data, links, alt text, sitemap, thin or near-duplicate copy,
+  internal links). The rules for each kind of page are in `RULES` at the top.
+- `src/lastmod.mjs` and `src/lastmod.json`: each page's sitemap date is the day its content last
+  changed. The build updates `lastmod.json`, so commit it with `dist/`.
 - `src/css/site.css`
 - `src/optimize_png.py`: palette-quantizes the PNGs (needs Pillow).
 
@@ -31,9 +38,12 @@ Duet, which also pushes to this repo. DEPLOY.md was written for Duet's container
   "PNG optimize skipped", so the PNGs come out big.
 - `npm run build` takes about 15 s. It's deterministic: only `version.txt` changes between two
   builds.
+- The build ends with the SEO check. Errors (a missing title, a broken link, two pages with the
+  same description) make it exit 1; fix them before committing. Warnings are for judgment.
+  `npm run seo` runs the check alone, and `node src/seo-check.mjs --all` lists every item.
 - Preview: `python3 -m http.server 8780 --bind 127.0.0.1 --directory dist`, then open
   http://127.0.0.1:8780/. It has no 404 page and no `_headers`; Cloudflare serves those.
-- There are no tests yet. Before committing a new template, render it and look at it.
+- There are no tests beyond the SEO check. Before committing a new template, render it and look at it.
 
 ## Deploying
 
@@ -48,8 +58,8 @@ live site alone. Afterwards, https://supermandalalab.com/version.txt should matc
 ## Sharing main with Duet
 
 - Run `git pull --rebase` before starting and again before building.
-- `dist/` is generated, so never hand-merge it. On a conflict, take either side, rebuild and
-  commit.
+- `dist/` and `src/lastmod.json` are generated, so never hand-merge them. On a conflict, take
+  either side, rebuild and commit.
 - Builds here differ from Duet's in about 120 `dist/` files, with no visible change:
   - Duet's file tools embed C2PA content credentials in SVGs and PNGs.
   - PNGs are re-encoded by a different Pillow.

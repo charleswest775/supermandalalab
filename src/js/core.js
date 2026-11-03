@@ -1038,6 +1038,7 @@ export const TEMPLATES = [
     slug: 'lotus-mandala', name: 'Lotus Mandala',
     sticker: 'mine',
     blurb: 'Layered lotus petals opening from a small center, finished with a scalloped border. A classic first mandala that colors beautifully and cuts cleanly.',
+    more: `<p>The lotus is the flower most often drawn at the heart of a mandala. It rises from mud into clean petals, and in Hindu and Buddhist art it stands for purity and awakening. Here two layers of petals open from the center, ringed by outlined leaves, a second ring of large petals, a ring of dots and a scalloped edge.</p><p>Eight slices keep the petals large, so it colors well with markers or crayons. For a paper or wood cut, choose the Stencil style, which cuts the design out of a solid disc so it holds together. On vinyl, transfer tape keeps the loose pieces in place.</p>`,
     make: () => ({ ...emptyDesign(), n: 8, layers: [
       L('circle', 30, 0, 0), L('petal', 30, 120, 80), L('petal', 40, 190, 120, { off: 0.5 }),
       L('leaf', 150, 70, 30, { echo: 1 }), L('circle', 245, 0, 0), L('petal', 245, 140, 150, { echo: 1 }),
@@ -1049,6 +1050,7 @@ export const TEMPLATES = [
     slug: 'snowflake-mandala', name: 'Snowflake Mandala',
     sticker: 'night',
     blurb: 'Six-fold spikes and diamonds in the pattern of a snow crystal. Good for winter crafts, ornaments and window clings.',
+    more: `<p>Real snow crystals grow with six-fold symmetry, from the way water molecules lock together as they freeze, so this template keeps to six slices: long rays from the center, outlined diamonds, and spikes that branch off at an angle like the arms of a crystal.</p><p>For window clings and ornaments, download a cut-ready SVG and cut it from vinyl or glitter cardstock, or make it a sticker with the Night glow look for gold lines on a dark disc. For a paper snowflake, set a thicker line thickness in the SVG download so the thin arms don't tear when you lift them off the mat.</p>`,
     make: () => ({ ...emptyDesign(), n: 6, layers: [
       L('circle', 26, 0, 0), L('line', 26, 420, 0), L('diamond', 40, 120, 50, { echo: 1 }),
       L('spike', 60, 70, 40, { off: 0.5 }), L('diamond', 170, 90, 44), L('line', 175, 80, 0, { off: 0.5 }),
@@ -1059,6 +1061,7 @@ export const TEMPLATES = [
   {
     slug: 'sun-mandala', name: 'Sun Mandala',
     blurb: 'A round face of rings with alternating straight and wavy rays. Bold and simple, it works for kids and for metal wall art.',
+    more: `<p>Sixteen slices give the sun its many rays: straight spikes alternate with long teardrop rays around a face of rings, dots and a wavy band, with a zigzag border at the edge.</p><p>For metal wall art, open it as a cut file with the button above and check the piece count under the design first. Rays that don't touch a ring cut out loose, so tie them in with a ring from the Shapes tab or use the Stencil style. For a classroom, print the PDF and color each ray a different shade of yellow and orange.</p>`,
     make: () => ({ ...emptyDesign(), n: 16, w: 3.5, layers: [
       L('circle', 60, 0, 0), L('circle', 110, 0, 0), L('dot', 70, 30, 22, { mult: 1 }),
       L('wave', 130, 26, 0), L('spike', 175, 150, 40), L('drop', 185, 230, 36, { off: 0.5 }),
@@ -1069,6 +1072,7 @@ export const TEMPLATES = [
     slug: 'flower-mandala', name: 'Flower Mandala',
     sticker: 'night',
     blurb: 'Round petals, teardrops and a ring of hearts, like a stylized bloom. A friendly design for coloring pages and stickers.',
+    more: `<p>Ten slices give this flower its soft, round look: a dot at the center, then leaves, outlined arches and teardrops, a ring of outlined hearts, and wide petals at the edge.</p><p>It makes a good sticker. In the sticker download, try the Night glow look for gold lines on a deep indigo disc. For a coloring page, pick two or three colors and repeat them from ring to ring, or set a soft line color in the Design tab before you download a PNG.</p>`,
     make: () => ({ ...emptyDesign(), n: 10, layers: [
       L('dot', 0, 50, 50), L('leaf', 25, 100, 50), L('circle', 130, 0, 0), L('arch', 130, 80, 80, { echo: 1 }),
       L('drop', 130, 140, 50, { off: 0.5 }), L('heart', 280, 70, 60, { echo: 1 }), L('circle', 280, 0, 0),
@@ -1078,6 +1082,7 @@ export const TEMPLATES = [
   {
     slug: 'star-mandala', name: 'Star Mandala',
     blurb: 'Crisp geometric stars stacked in rings. Sharp points and straight lines make it easy to cut on a laser or plasma table.',
+    more: `<p>Almost every shape here has straight edges: a star at the center, a zigzag band, diamonds drawn with two smaller diamonds inside, and long outlined spikes with rays between them. Twelve slices give every ring twelve points.</p><p>Straight edges and sharp points cut crisply on a laser or plasma table, which makes this a good first wood or metal cut. As it is, it cuts into many separate pieces, so for a panel choose the Stencil style, which cuts the design out of a solid disc, and check the count under the design before you cut.</p>`,
     make: () => ({ ...emptyDesign(), n: 12, w: 3, layers: [
       L('spike', 0, 100, 40), L('circle', 100, 0, 0), L('zigzag', 100, 60, 0),
       L('diamond', 170, 110, 46, { echo: 2 }), L('spike', 175, 90, 30, { off: 0.5 }),
@@ -1088,6 +1093,7 @@ export const TEMPLATES = [
   {
     slug: 'easy-mandala-for-kids', name: 'Easy Mandala for Kids',
     blurb: 'Big shapes, thick lines and only a few rings, so small hands can color inside the lines. Great for classrooms.',
+    more: `<p>Six slices, very thick lines and just three rings of shapes, petals, dots and hearts, make this the easiest template to color. Every space is big enough for a crayon, and there are only a few dozen of them, so a young child can finish it in one sitting.</p><p>For a class, print the PDF at Letter or A4. Or open it in the maker and let kids add their own lines in Draw: every stroke repeats around all six slices. Press Surprise me on Simple for a new design that's just as easy.</p>`,
     make: () => ({ ...emptyDesign(), n: 6, w: 6, layers: [
       L('circle', 50, 0, 0), L('petal', 50, 170, 130), L('dot', 260, 70, 70, { off: 0.5 }),
       L('circle', 300, 0, 0), L('heart', 310, 120, 120), L('circle', 450, 0, 0),
@@ -1097,6 +1103,7 @@ export const TEMPLATES = [
     slug: 'intricate-mandala', name: 'Intricate Mandala',
     sticker: 'mine',
     blurb: 'Twenty-four-fold symmetry with nested petals and fine rings, for adult coloring and detailed vinyl or paper cuts.',
+    more: `<p>Twenty-four slices and a fine line make this a design for slow, detailed coloring: nested petals, outlined leaves and arches, a scalloped band, a wavy band and a ring of 48 small petals at the edge, with hundreds of small spaces in all.</p><p>Color it with fine-tip markers or sharp colored pencils, on heavier, smooth paper. For a paper cut or a vinyl decal, set a thicker line thickness when you download the cut-ready SVG so the fine lines hold together, and cut a small test first.</p>`,
     make: () => ({ ...emptyDesign(), n: 24, w: 2, layers: [
       L('circle', 20, 0, 0), L('petal', 20, 80, 22), L('circle', 105, 0, 0), L('leaf', 105, 70, 26, { echo: 1 }),
       L('dot', 182, 10, 10, { off: 0.5 }), L('scallop', 195, 22, 0), L('petal', 220, 110, 40, { echo: 2 }),
@@ -1107,6 +1114,7 @@ export const TEMPLATES = [
   {
     slug: 'geometric-mandala', name: 'Geometric Mandala',
     blurb: 'Squares, diamonds and zigzags on eight-fold symmetry. A clean modern look for stencils, tiles and signs.',
+    more: `<p>Squares, diamonds and zigzags, with no curves but the rings: squares at the center, diamonds drawn with two smaller diamonds inside, a zigzag band, then outlined squares and long spikes. Eight slices keep the shapes big and bold.</p><p>Straight edges suit tile patterns, signs and painted stencils. For a wall or floor stencil, download the SVG or DXF in the Stencil style and cut it from stencil film. The maker tells you if any piece would fall out. For a coloring page, try one color per ring for a modern, graphic look.</p>`,
     make: () => ({ ...emptyDesign(), n: 8, w: 3, layers: [
       L('square', 0, 60, 60), L('circle', 90, 0, 0), L('diamond', 90, 120, 90, { echo: 2 }),
       L('square', 110, 50, 50, { off: 0.5 }), L('zigzag', 220, 50, 0, { mult: 2 }), L('circle', 280, 0, 0),
