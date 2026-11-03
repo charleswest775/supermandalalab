@@ -663,6 +663,17 @@ export function openingSizes(d, stickerIn = 3, borderIn = 0.1) {
   };
 }
 
+// The thinnest line on a sticker, in millimeters, laid out as stickerSVG does (which thickens anything
+// under 0.12 mm).
+export function stickerLineMM(d, sizeMM = 76.2, borderMM = 2.54) {
+  const paths = buildPaths(d);
+  if (!paths.length) return 0;
+  const b = boundsOf(paths);
+  const ext = Math.max(Math.abs(b.x0), Math.abs(b.x1), Math.abs(b.y0), Math.abs(b.y1), 1);
+  const k = ((sizeMM / 2 - clamp(borderMM, 0, sizeMM / 2 - 1)) * 0.94) / ext;
+  return Math.min(...paths.map(p => p.w)) * k;
+}
+
 export function escapeXML(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

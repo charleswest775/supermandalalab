@@ -2,7 +2,7 @@
 import {
   R, SHAPES, SYMMETRY_CHOICES, TEMPLATES, buildPaths, designSVG, pathD, smoothStroke, normalizeDesign,
   emptyDesign, ringLayer, randomDesign, templateDesign, cutOutlines, cutSVG, toDXF, pdfContent, pdfFile,
-  compactDesign, countPieces, boundsOf, newId, textSVG, stickerSVG, openingSizes, cleanText, hasOpenCenter,
+  compactDesign, countPieces, boundsOf, newId, textSVG, stickerSVG, openingSizes, cleanText, hasOpenCenter, stickerLineMM,
 } from './core.js';
 
 const STORE_KEY = 'sml:design:v1';
@@ -18,6 +18,10 @@ function init(root) {
   const guides = $('#mk-guides');
   const layerList = $('#mk-layers');
   const toast = $('#mk-toast');
+  // A goal page (coloring, sticker, words or cut) shows only some controls, so look them up with on().
+  const goal = root.dataset.goal || '';
+  const on = (sel, evt, fn) => { const el = $(sel); if (el) el.addEventListener(evt, fn); };
+  const setVal = (sel, v, prop = 'value') => { const el = $(sel); if (el) el[prop] = v; };
 
   let design = null;
   let mode = 'draw';
@@ -33,6 +37,9 @@ function init(root) {
     else if (tmpl && templateDesign(tmpl)) design = templateDesign(tmpl);
     else design = loadStored() || templateDesign(root.dataset.default || 'lotus-mandala');
     if (shared) history.replaceState(null, '', location.pathname + location.search);
+    // A sticker starts in the look its template was made for.
+    const look = !shared && TEMPLATES.find(t => t.slug === tmpl)?.sticker;
+    if (look) setVal('#mk-st-look', look);
     syncControls();
     renderAll();
     root.classList.add('is-ready');
@@ -87,10 +94,12 @@ function init(root) {
     saveTimer = setTimeout(() => store(design), 300);
     $('#mk-empty').hidden = design.layers.length > 0;
     updateOpening();
+    updateStatus();
   }
   // The open center's size, as it will come out on a page and on a sticker.
   function updateOpening() {
     const out = $('#mk-open-out'), note = $('#mk-open-note');
+    if (!out || !note) return;
     if (!design.open) { out.textContent = 'Off'; note.textContent = 'Slide to leave the middle empty for a name, a word or a date.'; return; }
     const st = stickerOptions();
     const sz = openingSizes(design, st.sizeMM / 25.4, st.borderMM / 25.4);
@@ -194,12 +203,18 @@ function init(root) {
     root.dataset.mode = m;
     $$('[data-mode-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.modeBtn === m)));
     if (m === 'shapes') showTab('shapes');
+    else if (goal) showTab('steps');
     renderHighlight();
   }
   $$('[data-mode-btn]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.modeBtn)));
 
   // ----- tabs -----
   function showTab(name) {
+    // A goal panel has no tabs: its steps, or the Shapes list while editing rings.
+    if (goal && name !== 'shapes') {
+      if (name === 'download') requestAnimationFrame(() => $('#mk-file')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+      name = 'steps';
+    }
     $$('[data-tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
     $$('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== name; });
   }
@@ -207,72 +222,75 @@ function init(root) {
 
   // ----- design controls -----
   const nSel = $('#mk-n');
-  nSel.innerHTML = SYMMETRY_CHOICES.map(n => `<option value="${n}">${n} slices</option>`).join('');
+  if (nSel) nSel.innerHTML = SYMMETRY_CHOICES.map(n => `<option value="${n}">${n} slices</option>`).join('');
   const tSel = $('#mk-template');
   const tOpts = list => list.map(t => `<option value="${t.slug}">${t.name}</option>`).join('');
   const framed = TEMPLATES.filter(hasOpenCenter);
-  tSel.innerHTML = '<option value="">Choose a template…</option>' +
-    `<optgroup label="Open center for words">${tOpts(framed)}</optgroup>` +
-    `<optgroup label="Sacred geometry">${tOpts(TEMPLATES.filter(t => t.sacred && !framed.includes(t)))}</optgroup>` +
-    `<optgroup label="Mandalas">${tOpts(TEMPLATES.filter(t => !t.sacred && !framed.includes(t)))}</optgroup>`;
-  if (root.dataset.level) $('#mk-level').value = root.dataset.level;
+  if (tSel) {
+    tSel.innerHTML = '<option value="">Choose a template…</option>' +
+      `<optgroup label="Open center for words">${tOpts(framed)}</optgroup>` +
+      `<optgroup label="Sacred geometry">${tOpts(TEMPLATES.filter(t => t.sacred && !framed.includes(t)))}</optgroup>` +
+      `<optgroup label="Mandalas">${tOpts(TEMPLATES.filter(t => !t.sacred && !framed.includes(t)))}</optgroup>`;
+  }
 
   function syncControls() {
-    if (!SYMMETRY_CHOICES.includes(design.n)) {
+    if (nSel && !SYMMETRY_CHOICES.includes(design.n)) {
       nSel.insertAdjacentHTML('beforeend', `<option value="${design.n}">${design.n} slices</option>`);
     }
-    nSel.value = String(design.n);
-    $('#mk-mirror').checked = design.mirror;
-    $('#mk-w').value = String(design.w);
-    $('#mk-w-out').textContent = (+design.w).toFixed(1);
-    $('#mk-ink').value = design.ink;
-    $('#mk-bgc').value = design.bg === 'transparent' ? '#ffffff' : design.bg;
-    $('#mk-guides-on').checked = prefs.guides !== false;
-    $('#mk-open').value = String(Math.round(design.open || 0));
+    setVal('#mk-n', String(design.n));
+    setVal('#mk-mirror', design.mirror, 'checked');
+    setVal('#mk-w', String(design.w));
+    setVal('#mk-w-out', (+design.w).toFixed(1), 'textContent');
+    setVal('#mk-ink', design.ink);
+    setVal('#mk-bgc', design.bg === 'transparent' ? '#ffffff' : design.bg);
+    setVal('#mk-guides-on', prefs.guides !== false, 'checked');
+    setVal('#mk-open', String(Math.round(design.open || 0)));
     const [t1 = '', t2 = ''] = (design.text || '').split('\n');
-    $('#mk-text1').value = t1;
-    $('#mk-text2').value = t2;
-    $('#mk-font').value = design.font || 'serif';
-    $('#mk-words-files').checked = prefs.wordsInFiles !== false;
+    setVal('#mk-text1', t1);
+    setVal('#mk-text2', t2);
+    setVal('#mk-font', design.font || 'serif');
+    setVal('#mk-words-files', prefs.wordsInFiles !== false, 'checked');
     root.classList.toggle('has-open', design.open > 0);
+    // The sticker panel offers words only for a design that has room for them.
+    root.classList.toggle('show-words', design.open > 0 || !!design.text);
   }
-  nSel.addEventListener('change', () => { commit(); design.n = +nSel.value; renderAll(); });
-  $('#mk-mirror').addEventListener('change', e => { commit(); design.mirror = e.target.checked; renderAll(); });
+  on('#mk-n', 'change', () => { commit(); design.n = +nSel.value; renderAll(); });
+  on('#mk-mirror', 'change', e => { commit(); design.mirror = e.target.checked; renderAll(); });
   let wCommitted = false;
-  $('#mk-w').addEventListener('input', e => {
+  on('#mk-w', 'input', e => {
     if (!wCommitted) { commit(); wCommitted = true; }
     design.w = +e.target.value;
     $('#mk-w-out').textContent = design.w.toFixed(1);
     renderArt();
   });
-  $('#mk-w').addEventListener('change', () => { wCommitted = false; });
-  $('#mk-ink').addEventListener('change', e => { commit(); design.ink = e.target.value; renderArt(); });
-  $('#mk-ink').addEventListener('input', e => { design.ink = e.target.value; renderArt(); });
-  $('#mk-bgc').addEventListener('change', e => { commit(); design.bg = e.target.value; renderArt(); });
-  $('#mk-bgc').addEventListener('input', e => { design.bg = e.target.value; renderArt(); });
-  $('#mk-guides-on').addEventListener('change', e => { prefs.guides = e.target.checked; savePrefs(prefs); renderGuides(); });
+  on('#mk-w', 'change', () => { wCommitted = false; });
+  on('#mk-ink', 'change', e => { commit(); design.ink = e.target.value; renderArt(); });
+  on('#mk-ink', 'input', e => { design.ink = e.target.value; renderArt(); });
+  on('#mk-bgc', 'change', e => { commit(); design.bg = e.target.value; renderArt(); });
+  on('#mk-bgc', 'input', e => { design.bg = e.target.value; renderArt(); });
+  on('#mk-guides-on', 'change', e => { prefs.guides = e.target.checked; savePrefs(prefs); renderGuides(); });
   let openCommitted = false;
-  $('#mk-open').addEventListener('input', e => {
+  on('#mk-open', 'input', e => {
     if (!openCommitted) { commit(); openCommitted = true; }
     design.open = +e.target.value;
     root.classList.toggle('has-open', design.open > 0);
     renderArt();
   });
-  $('#mk-open').addEventListener('change', () => { openCommitted = false; });
+  on('#mk-open', 'change', () => { openCommitted = false; });
   let textCommitted = false;
   const readText = () => {
     if (!textCommitted) { commit(); textCommitted = true; }
     design.text = cleanText($('#mk-text1').value + '\n' + $('#mk-text2').value);
-    if (design.text && !design.open) { design.open = 150; $('#mk-open').value = '150'; root.classList.add('has-open'); }
+    if (design.text && !design.open) { design.open = 150; setVal('#mk-open', '150'); root.classList.add('has-open'); }
     renderArt();
   };
   ['#mk-text1', '#mk-text2'].forEach(id => {
-    $(id).addEventListener('input', readText);
-    $(id).addEventListener('change', () => { textCommitted = false; });
+    on(id, 'input', readText);
+    on(id, 'change', () => { textCommitted = false; });
   });
-  $('#mk-font').addEventListener('change', e => { commit(); design.font = e.target.value; renderArt(); });
-  $('#mk-words-files').addEventListener('change', e => { prefs.wordsInFiles = e.target.checked; savePrefs(prefs); updateOpening(); });
-  tSel.addEventListener('change', () => {
+  on('#mk-font', 'change', e => { commit(); design.font = e.target.value; renderArt(); });
+  on('#mk-words-files', 'change', e => { prefs.wordsInFiles = e.target.checked; savePrefs(prefs); updateOpening(); });
+  on('#mk-template', 'change', () => {
     if (!tSel.value) return;
     commit();
     design = templateDesign(tSel.value);
@@ -282,9 +300,23 @@ function init(root) {
     renderAll();
     say('Template loaded. Undo brings back your last design.');
   });
-  $('#mk-random').addEventListener('click', () => {
+  // A goal's starting designs load in place. On the words page, a new frame keeps the words you typed.
+  $$('[data-start]').forEach(b => b.addEventListener('click', () => {
     commit();
-    const lvl = $('#mk-level').value;
+    const { text } = design;
+    design = templateDesign(b.dataset.start);
+    if (goal === 'words' && text) design.text = text;
+    if (b.dataset.look) setVal('#mk-st-look', b.dataset.look);
+    selected = null;
+    syncControls();
+    renderAll();
+    say('Loaded. Undo brings back your last design.');
+  }));
+  on('#mk-random', 'click', () => {
+    commit();
+    // The detail menu, or the levels that suit this goal.
+    const levels = ($('#mk-level')?.value || root.dataset.surprise || 'medium').split(',');
+    const lvl = levels[Math.floor(Math.random() * levels.length)];
     const { text, font } = design;
     design = randomDesign(Math.floor(Math.random() * 1e9), lvl);
     // A new frame keeps the words you typed.
@@ -293,6 +325,12 @@ function init(root) {
     syncControls();
     renderAll();
   });
+  // Changing goal opens that goal's page with this design.
+  on('#mk-goal', 'change', async e => {
+    const to = e.target.value;
+    location.href = design.layers.length ? await shareURL(design, to) : to;
+  });
+  on('#mk-back', 'click', () => setMode('draw'));
   $('#mk-clear').addEventListener('click', () => {
     if (!design.layers.length) return;
     commit();
@@ -400,7 +438,7 @@ function init(root) {
         ${isSel ? `<div class="mk-layer-body">${body}</div>` : ''}</li>`;
     }).reverse();
     layerList.innerHTML = items.join('') || '<li class="mk-hint">No layers yet. Add a shape above, or switch to Draw and sketch in any slice.</li>';
-    $('#mk-layer-count').textContent = String(design.layers.length);
+    setVal('#mk-layer-count', String(design.layers.length), 'textContent');
   }
   function miniIcon(l) {
     if (l.kind === 'stroke') return '<svg viewBox="0 0 20 20"><path d="M3 15c3-8 6 2 9-6s4 2 5 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -592,6 +630,7 @@ function init(root) {
     if (polys) say(piecesNote(polys, o) + wordsNote(), 9000);
     else if (design.text) say(wordsNote().trim(), 7000);
   }));
+  if (root.dataset.svgStyle) setVal('#mk-svg-style', root.dataset.svgStyle);
   ['mk-svg', 'mk-dxf'].forEach(prefix => {
     const unitSel = $(`#${prefix}-unit`);
     unitSel.addEventListener('change', () => {
@@ -644,7 +683,7 @@ function init(root) {
 
   $('#mk-share').addEventListener('click', async e => {
     if (!hasArt()) return;
-    const url = await shareURL(design);
+    const url = await shareURL(design, '/');
     try {
       await navigator.clipboard.writeText(url);
       say('Link copied. Anyone with it can open and edit a copy of this mandala.');
@@ -653,6 +692,49 @@ function init(root) {
     }
     track('share');
   });
+
+  // ----- live checks on the sticker and cut pages -----
+  const status = $('#mk-status');
+  let statusTimer = 0, statusRun = 0;
+  function updateStatus() {
+    if (!status) return;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(goal === 'cut' ? cutStatus : stickerStatus, goal === 'cut' ? 500 : 150);
+  }
+  function showStatus(msg, ok = true) {
+    status.hidden = !msg;
+    $('#mk-status-text').textContent = msg;
+    status.classList.toggle('warn', !ok);
+  }
+  // The sticker as it will print (the canvas shows plain lines), and whether its lines hold up at that size.
+  function stickerStatus() {
+    if (!design.layers.length) return showStatus('');
+    const o = stickerOptions();
+    $('#mk-status-img').src = 'data:image/svg+xml,' + encodeURIComponent(stickerSVG(forFiles(), { ...o, bleedMM: 0, cutline: false, px: 128 }));
+    const mm = stickerLineMM(design, o.sizeMM, o.plain ? 0 : o.borderMM);
+    const at = `on a ${+$('#mk-st-size').value || ''} ${$('#mk-st-unit').value} sticker`;
+    if (mm < 0.12) showStatus(`The thinnest lines would print ${mm.toFixed(2)} mm wide ${at}, so the file thickens them to 0.12 mm. Raise Line weight for a bolder sticker.`, false);
+    else if (mm < 0.15) showStatus(`The thinnest lines print ${mm.toFixed(2)} mm wide ${at}: they'll print, but they're delicate. Raise Line weight for a bolder sticker.`, false);
+    else showStatus(`Lines print at least ${mm.toFixed(2)} mm wide ${at}: crisp.`);
+  }
+  async function cutStatus() {
+    if (!design.layers.length) return showStatus('');
+    const laser = root.dataset.machine === 'laser';
+    const o = cutOptions(laser ? 'mk-dxf' : 'mk-svg');
+    if (o.style === 'lines') {
+      return showStatus(laser ? 'Centerlines engrave or score, so nothing comes out loose.' : 'A line drawing opens as strokes. Choose Cut-ready shapes for a clean cut.');
+    }
+    const run = ++statusRun;
+    try {
+      const polys = await cutPolys(o);
+      if (run !== statusRun) return;
+      const n = countPieces(polys);
+      if (o.style === 'stencil') showStatus(n > 1 ? `${n - 1} enclosed area${n === 2 ? '' : 's'} will fall out of this stencil.` : 'This stencil cuts as one piece.', n === 1);
+      else showStatus(n > 1 ? `Cuts as ${n} separate pieces. Fine for vinyl on transfer tape. For paper, wood or metal, overlap loose shapes or add a ring to tie them in.` : 'Cuts as one connected piece.', n === 1);
+    } catch { showStatus(''); }
+  }
+  $$('input[name="mk-machine"]').forEach(r => r.addEventListener('change', () => { root.dataset.machine = r.value; updateStatus(); }));
+  ['input', 'change'].forEach(evt => on('#mk-file', evt, updateStatus));
 
   if (root.dataset.focusTab) showTab(root.dataset.focusTab);
   setMode('draw');
@@ -692,7 +774,7 @@ function savePrefs(p) {
 const b64u = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 
-async function shareURL(d) {
+async function shareURL(d, path) {
   const json = JSON.stringify(compactDesign(d));
   let payload;
   if (window.CompressionStream) {
@@ -704,7 +786,7 @@ async function shareURL(d) {
   } else {
     payload = 'j' + b64u(new TextEncoder().encode(json));
   }
-  return `${location.origin}/#d=${payload}`;
+  return `${location.origin}${path}#d=${payload}`;
 }
 
 async function readHashDesign() {

@@ -125,17 +125,19 @@ function editLink(d) {
 }
 
 // ---------- layout ----------
-const NAV = [
-  ['/', 'Maker'],
-  ['/templates/', 'Templates'],
-  ['/sacred-geometry/', 'Sacred geometry'],
-  ['/mandala-frames/', 'Frames for words'],
-  ['/mandala-stickers/', 'Stickers'],
-  ['/coloring-pages/', 'Coloring pages'],
-  ['/svg-for-cricut/', 'SVG for Cricut'],
-  ['/dxf-for-laser-and-plasma/', 'DXF for laser'],
-  ['/learn/', 'Learn'],
+// What people come to make. Each goal page opens the maker with only that goal's starting designs,
+// controls and files. The home page, the templates and sacred geometry keep the full maker.
+const GOALS = [
+  { key: 'coloring', name: 'Coloring page', nav: 'Coloring pages', path: '/coloring-page-maker/', blurb: 'Print a PDF at Letter or A4', img: '/img/templates/easy-mandala-for-kids.svg' },
+  { key: 'sticker', name: 'Sticker', nav: 'Stickers', path: '/mandala-stickers/', blurb: 'Die-cut sticker SVG or PNG', img: '/img/stickers/flower-of-life-mandala.svg' },
+  { key: 'words', name: 'Words in the center', nav: 'Words', path: '/mandala-frames/', blurb: 'Wall tags, signs and cards', img: '/img/templates/petal-frame-mandala.svg' },
+  { key: 'cut', name: 'Cut file', nav: 'Cut files', path: '/svg-for-cricut/', blurb: 'Cricut, laser or plasma', img: '/img/templates/mystic-rose-mandala.svg' },
 ];
+const NAV = [...GOALS.map(g => [g.path, g.nav]), ['/templates/', 'Free designs'], ['/learn/', 'Learn']];
+// The nav item a page sits under.
+const navFor = p => p === '/dxf-for-laser-and-plasma/' ? '/svg-for-cricut/'
+  : /^\/(templates|coloring-pages|sacred-geometry)\//.test(p) ? '/templates/'
+  : p.startsWith('/learn/') ? '/learn/' : p;
 
 const SITEMAP = [];
 
@@ -181,7 +183,7 @@ ${schemas.map(s => `<script type="application/ld+json">${JSON.stringify(s)}</scr
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-head"><div class="wrap">
 <a class="brand" href="/">${LOGO}<span>${BRAND}</span></a>
-<nav class="nav" aria-label="Main">${NAV.map(([href, label]) => `<a href="${href}"${href === o.path ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+<nav class="nav" aria-label="Main">${NAV.map(([href, label]) => `<a href="${href}"${href === navFor(o.path) ? ` aria-current="${href === o.path ? 'page' : 'true'}"` : ''}>${label}</a>`).join('')}</nav>
 </div></header>
 <main id="main">
 ${o.wide ? '' : ''}<div class="wrap">${crumbs}</div>
@@ -190,8 +192,8 @@ ${o.body}
 <footer class="site-foot"><div class="wrap">
 <div class="cols">
 <div><h4>${BRAND}</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
-<div><h4>Make</h4><ul><li><a href="/">Mandala maker</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li></ul></div>
-<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
+<div><h4>Make</h4><ul><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li><li><a href="/">The full mandala maker</a></li></ul></div>
+<div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
 <div><h4>Learn</h4><ul>${ARTICLES.map(a => `<li><a href="/learn/${a.slug}/">${esc(a.short)}</a></li>`).join('')}<li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
 </div>
 <p class="fine">Made in Reno, Nevada by <a href="https://superfablab.com">SuperFabLab</a>, a metal fabrication studio. © 2026 ${BRAND}.</p>
@@ -203,8 +205,120 @@ ${o.body}
 }
 
 // ---------- the maker block ----------
+// The maker's controls by name, so the full maker and each goal can lay out only the ones they need.
+// app.js finds them by id and skips any a page leaves out.
+const row = (label, input, out = '') => `<label class="mk-row"><span>${label}</span>${input}${out}</label>`;
+const CTRL = {
+  n: row('Symmetry', '<select id="mk-n"></select>'),
+  mirror: '<label class="mk-check"><input type="checkbox" id="mk-mirror" checked> Mirror inside each slice</label>',
+  w: row('Line weight', '<input type="range" id="mk-w" min="0.5" max="20" step="0.5" value="3">', '<output id="mk-w-out">3.0</output>'),
+  ink: row('Line color', '<input type="color" id="mk-ink" value="#24203f">'),
+  bg: row('Background', '<input type="color" id="mk-bgc" value="#ffffff">'),
+  guides: '<label class="mk-check"><input type="checkbox" id="mk-guides-on" checked> Show slice guides</label>',
+  open: row('Opening', '<input type="range" id="mk-open" min="0" max="340" step="2" value="0">', '<output id="mk-open-out">Off</output>'),
+  words: `<label class="mk-row mk-text-row"><span>Words</span><input type="text" id="mk-text1" maxlength="30" placeholder="A name or a word" autocomplete="off"></label>
+<label class="mk-row mk-text-row"><span>Second line</span><input type="text" id="mk-text2" maxlength="30" placeholder="Optional, like a date" autocomplete="off"></label>
+<label class="mk-row mk-text-row"><span>Lettering</span><select id="mk-font"><option value="serif">Serif</option><option value="sans">Sans serif</option></select></label>`,
+  wordsFiles: '<label class="mk-check"><input type="checkbox" id="mk-words-files" checked> Put the words in downloads</label>',
+  openNote: '<p id="mk-open-note" class="mk-note">Slide to leave the middle empty for a name, a word or a date.</p>',
+  look: '<label class="mk-row" style="grid-template-columns:auto 1fr"><span>Look</span><select id="mk-st-look"><option value="mine">My colors</option><option value="night">Night glow (gold on dark)</option></select></label>',
+};
+const levelSelect = frame => `<select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option><option value="sacred">Sacred geometry</option>${frame ? '<option value="frame">Open center for words</option>' : ''}</select>`;
+const DL = {
+  pdf: `<div class="mk-dl"><h3>PDF <small>coloring pages and prints</small></h3>
+      <div class="mk-inline"><select id="mk-pdf-page" aria-label="Paper size"><option value="letter">US Letter</option><option value="a4">A4</option></select><button type="button" id="mk-dl-pdf" class="mk-primary">Download PDF</button></div>
+      <label class="mk-check"><input type="checkbox" id="mk-pdf-coloring" checked> Coloring page (black lines, no fills)</label>
+    </div>`,
+  png: `<div class="mk-dl"><h3>PNG <small>sharing and digital coloring</small></h3>
+      <div class="mk-inline"><select id="mk-png-size" aria-label="Image size"><option value="1000">1000 px</option><option value="2000" selected>2000 px</option><option value="4000">4000 px</option></select><button type="button" id="mk-dl-png" class="mk-primary">Download PNG</button></div>
+      <label class="mk-check"><input type="checkbox" id="mk-png-clear"> Transparent background</label>
+    </div>`,
+  svg: (machine = '') => `<div class="mk-dl"${machine ? ` data-machine="${machine}"` : ''}><h3>SVG <small>Cricut, Silhouette, Illustrator</small></h3>
+      <select id="mk-svg-style" aria-label="SVG style"><option value="cut">Cut-ready shapes (Cricut)</option><option value="stencil">Stencil: design cut from a disc</option><option value="lines">Line drawing (editable strokes)</option></select>
+      <div class="mk-inline" data-cut-for="mk-svg" data-cut-only="1"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Width</span><input type="number" id="mk-svg-size" value="12" min="0.5" step="0.5"></label><select id="mk-svg-unit" aria-label="Units"><option value="in">in</option><option value="mm">mm</option></select></div>
+      <label class="mk-row" data-cut-for="mk-svg" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-svg-thick" value="0.08" min="0.001" step="0.01"></label>
+      <label class="mk-check" data-cut-for="mk-svg" data-lines-only="1"><input type="checkbox" id="mk-svg-clear" checked> Transparent background</label>
+      <button type="button" id="mk-dl-svg" class="mk-primary">Download SVG</button>
+    </div>`,
+  dxf: (machine = '') => `<div class="mk-dl"${machine ? ` data-machine="${machine}"` : ''}><h3>DXF <small>laser, CNC and plasma</small></h3>
+      <select id="mk-dxf-style" aria-label="DXF style"><option value="cut">Cut-ready outlines</option><option value="stencil">Stencil: design cut from a disc</option><option value="lines">Centerlines (engrave or score)</option></select>
+      <div class="mk-inline" data-cut-for="mk-dxf"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Width</span><input type="number" id="mk-dxf-size" value="12" min="0.5" step="0.5"></label><select id="mk-dxf-unit" aria-label="Units"><option value="in">in</option><option value="mm">mm</option></select></div>
+      <label class="mk-row" data-cut-for="mk-dxf" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-dxf-thick" value="0.08" min="0.001" step="0.01"></label>
+      <button type="button" id="mk-dl-dxf" class="mk-primary">Download DXF</button>
+    </div>`,
+  sticker: look => `<div class="mk-dl"><h3>Sticker <small>die-cut, print then cut</small></h3>
+      <div class="mk-inline"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Size</span><input type="number" id="mk-st-size" value="3" min="0.5" step="0.25"></label><select id="mk-st-unit" aria-label="Sticker units"><option value="in">in</option><option value="mm">mm</option></select></div>
+      ${look ? CTRL.look : ''}
+      <label class="mk-row" style="grid-template-columns:auto 1fr"><span>White border</span><input type="number" id="mk-st-border" value="0.1" min="0" step="0.05"></label>
+      <label class="mk-check"><input type="checkbox" id="mk-st-plain"> Disc only, with no border or cut line</label>
+      <div class="mk-inline"><button type="button" id="mk-dl-st-svg" class="mk-primary">Sticker SVG</button><button type="button" id="mk-dl-st-png">Sticker PNG</button></div>
+      <p class="mk-hint" style="margin:0">The SVG has bleed and a cut line on its own CutContour layer. The PNG is 300 dpi and transparent outside the border, for sticker printers.</p>
+    </div>`,
+  share: '<div class="mk-dl"><h3>Share</h3><p class="mk-hint" style="margin:0">Copy a link that opens this mandala for anyone.</p><button type="button" id="mk-share">Copy share link</button></div>',
+};
+const SHAPES_PANEL = `<div class="mk-inline"><select id="mk-add-shape" aria-label="Shape to add"></select><button type="button" id="mk-add" class="mk-primary">Add</button></div>
+    <p class="mk-hint">Each ring repeats a shape around the circle. Sacred geometry figures, like the Flower of Life and Metatron's Cube, sit at the center. Tap a layer to change its size, distance, twist and fill.</p>
+    <ul class="mk-layers" id="mk-layers"></ul>`;
+
+// Every control on one page, in tabs: the home page, the templates and sacred geometry.
+const fullPanel = () => `<div class="mk-panel">
+  <div class="mk-tabs" role="tablist">
+    <button type="button" role="tab" data-tab="design" aria-selected="true">Design</button>
+    <button type="button" role="tab" data-tab="shapes" aria-selected="false">Shapes (<span id="mk-layer-count">0</span>)</button>
+    <button type="button" role="tab" data-tab="download" aria-selected="false">Download</button>
+  </div>
+  <div class="mk-tab-body" data-panel="design">
+    ${CTRL.n}${CTRL.mirror}${CTRL.w}${CTRL.ink}${CTRL.bg}${CTRL.guides}
+    <div class="mk-group">
+      <h3>Open center for words</h3>
+      ${CTRL.open}${CTRL.words}${CTRL.wordsFiles}${CTRL.openNote}
+    </div>
+    <div class="mk-group">
+      <h3>Start from something</h3>
+      <select id="mk-template" aria-label="Templates"></select>
+      <div class="mk-inline">${levelSelect(true)}<button type="button" id="mk-random">Surprise me</button></div>
+      <p>Templates and Surprise me replace the current design. Undo brings it back.</p>
+    </div>
+  </div>
+  <div class="mk-tab-body" data-panel="shapes" hidden>
+    ${SHAPES_PANEL}
+  </div>
+  <div class="mk-tab-body" data-panel="download" hidden>
+    ${DL.pdf}${DL.png}${DL.svg()}${DL.dxf()}${DL.sticker(true)}${DL.share}
+  </div>
+</div>`;
+
+// One goal: three steps from top to bottom, with every other format one click away.
+const goalPanel = (key, machine) => {
+  const g = GOAL_UI[key];
+  return `<div class="mk-panel">
+  <div class="mk-goal-head"><label for="mk-goal">Making</label><select id="mk-goal">${GOALS.map(x => `<option value="${x.path}"${x.key === key ? ' selected' : ''}>${x.name}</option>`).join('')}<option value="/">Anything: the full maker</option></select></div>
+  <div class="mk-tab-body" data-panel="steps">
+    <section class="mk-step"><h3><span>1</span> Start from</h3>
+      <div class="mk-starters">${g.starters.join('')}</div>
+      <div class="mk-inline">${g.level ? levelSelect(false) : ''}<button type="button" id="mk-random">Surprise me</button></div>
+      ${g.after || ''}
+    </section>
+    <section class="mk-step"><h3><span>2</span> Make it yours</h3>
+      ${g.make}
+    </section>
+    <section class="mk-step" id="mk-file"><h3><span>3</span> ${g.title}</h3>
+      ${typeof g.file === 'function' ? g.file(machine) : g.file}
+      <details class="mk-more"><summary>Other formats</summary>${g.more}${DL.share}</details>
+    </section>
+  </div>
+  <div class="mk-tab-body" data-panel="shapes" hidden>
+    <button type="button" id="mk-back" class="mk-back">‹ Back to the steps</button>
+    ${SHAPES_PANEL}
+  </div>
+</div>`;
+};
+
+// o.goal picks a goal panel (coloring, sticker, words or cut); without one, the full maker.
 function maker(o = {}) {
-  return `<section id="maker" class="maker wrap" data-mode="draw" data-clipper="${CLIPPER_URL}"${o.template ? ` data-template="${o.template}"` : ''}${o.tab ? ` data-focus-tab="${o.tab}"` : ''}${o.level ? ` data-level="${o.level}"` : ''}${o.dlFirst ? ` data-dl-first="${o.dlFirst}"` : ''} aria-label="Mandala maker">
+  const attrs = { template: o.template, 'focus-tab': o.tab, goal: o.goal, machine: o.goal === 'cut' ? (o.machine || 'cricut') : '',
+    surprise: o.goal && GOAL_UI[o.goal].surprise, 'svg-style': o.goal && GOAL_UI[o.goal].svgStyle };
+  return `<section id="maker" class="maker wrap" data-mode="draw" data-clipper="${CLIPPER_URL}"${Object.entries(attrs).map(([k, v]) => v ? ` data-${k}="${v}"` : '').join('')} aria-label="Mandala maker">
 <div class="mk-stage">
   <div class="mk-toolbar" role="toolbar" aria-label="Maker tools">
     <button type="button" data-mode-btn="draw" aria-pressed="true">Draw</button>
@@ -226,75 +340,10 @@ function maker(o = {}) {
     </svg>
     <div class="mk-empty" id="mk-empty" hidden>Draw anywhere in the circle.<br>Every stroke repeats around the center.</div>
   </div>
+  ${o.goal === 'sticker' || o.goal === 'cut' ? `<div class="mk-status" id="mk-status" role="status" hidden>${o.goal === 'sticker' ? '<img id="mk-status-img" alt="Your sticker as it will print" width="64" height="64">' : ''}<span id="mk-status-text"></span></div>` : ''}
   <p class="mk-tip">Tip: draw with a mouse, finger or stylus. Use Shapes to add rings of petals, dots and scallops, and Surprise me for a fresh design.</p>
 </div>
-<div class="mk-panel">
-  <div class="mk-tabs" role="tablist">
-    <button type="button" role="tab" data-tab="design" aria-selected="true">Design</button>
-    <button type="button" role="tab" data-tab="shapes" aria-selected="false">Shapes (<span id="mk-layer-count">0</span>)</button>
-    <button type="button" role="tab" data-tab="download" aria-selected="false">Download</button>
-  </div>
-  <div class="mk-tab-body" data-panel="design">
-    <label class="mk-row"><span>Symmetry</span><select id="mk-n"></select></label>
-    <label class="mk-check"><input type="checkbox" id="mk-mirror" checked> Mirror inside each slice</label>
-    <label class="mk-row"><span>Line weight</span><input type="range" id="mk-w" min="0.5" max="20" step="0.5" value="3"><output id="mk-w-out">3.0</output></label>
-    <label class="mk-row"><span>Line color</span><input type="color" id="mk-ink" value="#24203f"></label>
-    <label class="mk-row"><span>Background</span><input type="color" id="mk-bgc" value="#ffffff"></label>
-    <label class="mk-check"><input type="checkbox" id="mk-guides-on" checked> Show slice guides</label>
-    <div class="mk-group">
-      <h3>Open center for words</h3>
-      <label class="mk-row"><span>Opening</span><input type="range" id="mk-open" min="0" max="340" step="2" value="0"><output id="mk-open-out">Off</output></label>
-      <label class="mk-row mk-text-row"><span>Words</span><input type="text" id="mk-text1" maxlength="30" placeholder="A name or a word" autocomplete="off"></label>
-      <label class="mk-row mk-text-row"><span>Second line</span><input type="text" id="mk-text2" maxlength="30" placeholder="Optional, like a date" autocomplete="off"></label>
-      <label class="mk-row mk-text-row"><span>Lettering</span><select id="mk-font"><option value="serif">Serif</option><option value="sans">Sans serif</option></select></label>
-      <label class="mk-check"><input type="checkbox" id="mk-words-files" checked> Put the words in downloads</label>
-      <p id="mk-open-note">Slide to leave the middle empty for a name, a word or a date.</p>
-    </div>
-    <div class="mk-group">
-      <h3>Start from something</h3>
-      <select id="mk-template" aria-label="Templates"></select>
-      <div class="mk-inline"><select id="mk-level" aria-label="Detail level"><option value="easy">Simple</option><option value="medium" selected>Medium</option><option value="intricate">Intricate</option><option value="sacred">Sacred geometry</option><option value="frame">Open center for words</option></select><button type="button" id="mk-random">Surprise me</button></div>
-      <p>Templates and Surprise me replace the current design. Undo brings it back.</p>
-    </div>
-  </div>
-  <div class="mk-tab-body" data-panel="shapes" hidden>
-    <div class="mk-inline"><select id="mk-add-shape" aria-label="Shape to add"></select><button type="button" id="mk-add" class="mk-primary">Add</button></div>
-    <p class="mk-hint">Each ring repeats a shape around the circle. Sacred geometry figures, like the Flower of Life and Metatron's Cube, sit at the center. Tap a layer to change its size, distance, twist and fill.</p>
-    <ul class="mk-layers" id="mk-layers"></ul>
-  </div>
-  <div class="mk-tab-body" data-panel="download" hidden>
-    <div class="mk-dl"><h3>PDF <small>coloring pages and prints</small></h3>
-      <div class="mk-inline"><select id="mk-pdf-page" aria-label="Paper size"><option value="letter">US Letter</option><option value="a4">A4</option></select><button type="button" id="mk-dl-pdf" class="mk-primary">Download PDF</button></div>
-      <label class="mk-check"><input type="checkbox" id="mk-pdf-coloring" checked> Coloring page (black lines, no fills)</label>
-    </div>
-    <div class="mk-dl"><h3>PNG <small>sharing and digital coloring</small></h3>
-      <div class="mk-inline"><select id="mk-png-size" aria-label="Image size"><option value="1000">1000 px</option><option value="2000" selected>2000 px</option><option value="4000">4000 px</option></select><button type="button" id="mk-dl-png" class="mk-primary">Download PNG</button></div>
-      <label class="mk-check"><input type="checkbox" id="mk-png-clear"> Transparent background</label>
-    </div>
-    <div class="mk-dl"><h3>SVG <small>Cricut, Silhouette, Illustrator</small></h3>
-      <select id="mk-svg-style" aria-label="SVG style"><option value="cut">Cut-ready shapes (Cricut)</option><option value="stencil">Stencil: design cut from a disc</option><option value="lines">Line drawing (editable strokes)</option></select>
-      <div class="mk-inline" data-cut-for="mk-svg" data-cut-only="1"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Width</span><input type="number" id="mk-svg-size" value="12" min="0.5" step="0.5"></label><select id="mk-svg-unit" aria-label="Units"><option value="in">in</option><option value="mm">mm</option></select></div>
-      <label class="mk-row" data-cut-for="mk-svg" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-svg-thick" value="0.08" min="0.001" step="0.01"></label>
-      <label class="mk-check" data-cut-for="mk-svg" data-lines-only="1"><input type="checkbox" id="mk-svg-clear" checked> Transparent background</label>
-      <button type="button" id="mk-dl-svg" class="mk-primary">Download SVG</button>
-    </div>
-    <div class="mk-dl"><h3>DXF <small>laser, CNC and plasma</small></h3>
-      <select id="mk-dxf-style" aria-label="DXF style"><option value="cut">Cut-ready outlines</option><option value="stencil">Stencil: design cut from a disc</option><option value="lines">Centerlines (engrave or score)</option></select>
-      <div class="mk-inline" data-cut-for="mk-dxf"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Width</span><input type="number" id="mk-dxf-size" value="12" min="0.5" step="0.5"></label><select id="mk-dxf-unit" aria-label="Units"><option value="in">in</option><option value="mm">mm</option></select></div>
-      <label class="mk-row" data-cut-for="mk-dxf" data-cut-only="1" style="grid-template-columns:auto 1fr"><span>Line thickness</span><input type="number" id="mk-dxf-thick" value="0.08" min="0.001" step="0.01"></label>
-      <button type="button" id="mk-dl-dxf" class="mk-primary">Download DXF</button>
-    </div>
-    <div class="mk-dl mk-dl-sticker"><h3>Sticker <small>die-cut, print then cut</small></h3>
-      <div class="mk-inline"><label class="mk-row" style="grid-template-columns:auto 1fr"><span>Size</span><input type="number" id="mk-st-size" value="3" min="0.5" step="0.25"></label><select id="mk-st-unit" aria-label="Sticker units"><option value="in">in</option><option value="mm">mm</option></select></div>
-      <label class="mk-row" style="grid-template-columns:auto 1fr"><span>Look</span><select id="mk-st-look"><option value="mine">My colors</option><option value="night">Night glow (gold on dark)</option></select></label>
-      <label class="mk-row" style="grid-template-columns:auto 1fr"><span>White border</span><input type="number" id="mk-st-border" value="0.1" min="0" step="0.05"></label>
-      <label class="mk-check"><input type="checkbox" id="mk-st-plain"> Disc only, with no border or cut line</label>
-      <div class="mk-inline"><button type="button" id="mk-dl-st-svg" class="mk-primary">Sticker SVG</button><button type="button" id="mk-dl-st-png">Sticker PNG</button></div>
-      <p class="mk-hint" style="margin:0">The SVG has bleed and a cut line on its own CutContour layer. The PNG is 300 dpi and transparent outside the border, for sticker printers.</p>
-    </div>
-    <div class="mk-dl"><h3>Share</h3><p class="mk-hint" style="margin:0">Copy a link that opens this mandala for anyone.</p><button type="button" id="mk-share">Copy share link</button></div>
-  </div>
-</div>
+${o.goal ? goalPanel(o.goal, o.machine) : fullPanel()}
 <div class="mk-toast" id="mk-toast" role="status" aria-live="polite"></div>
 </section>`;
 }
@@ -337,6 +386,66 @@ for (const t of [...STICKER_TEMPLATES, ...WORD_STICKERS]) {
   if (!d.open) write(`files/stickers/${t.slug}-sticker.svg`, stickerSVG(d, { look: t.sticker, paths }), false);
 }
 const stickerTiles = list => `<ul class="tiles stickers">${list.map(t => `<li><a href="/templates/${t.slug}/"><img src="/img/stickers/${t.slug}.svg" alt="${esc(t.name)} as a round sticker" width="300" height="300" loading="lazy"><span>${esc(t.name)}</span></a></li>`).join('')}</ul>`;
+
+// How many pieces a design cuts into at 12 inches wide with 0.08 inch lines, the same math as the maker.
+function cutPieces(d) {
+  const b = boundsOf(buildPaths(d).map(p => ({ ...p, w: 0 })));
+  const weight = (0.08 * Math.max(b.x1 - b.x0, b.y1 - b.y0)) / (12 - 0.08);
+  return countPieces(cutOutlines(buildPaths(d), ClipperLib, { weight, margin: weight * 4 }));
+}
+// Cut files start from the templates that come apart into the fewest pieces.
+const CUT_STARTERS = MANDALA_TEMPLATES.concat(SACRED_TEMPLATES).map(t => ({ t, pieces: cutPieces(templateDesign(t.slug)) }))
+  .sort((a, b) => a.pieces - b.pieces).slice(0, 8);
+console.log('Cut starters:', CUT_STARTERS.map(c => `${c.t.slug} ${c.pieces}`).join(', '));
+
+// A starting design in a goal panel: loads in place, replacing the design (Undo brings it back).
+const startTile = (slug, img, note = '') => {
+  const t = TEMPLATES.find(x => x.slug === slug);
+  return `<button type="button" class="mk-start" data-start="${slug}"${t.sticker ? ` data-look="${t.sticker}"` : ''} aria-label="${esc(t.name)}${note ? `, ${note}` : ''}" title="${esc(t.name)}"><img src="${img}" alt="" width="72" height="72" loading="lazy">${note ? `<small>${note}</small>` : ''}</button>`;
+};
+const GOAL_UI = {
+  coloring: {
+    starters: ['easy-mandala-for-kids', 'simple-mandala', 'leaf-mandala', 'lotus-mandala', 'snowflake-mandala', 'flower-of-life-mandala', 'mystic-rose-mandala', 'intricate-mandala']
+      .map(s => startTile(s, `/img/templates/${s}.svg`)),
+    level: true,
+    after: '<p class="mk-note">Or print one that\'s ready now from the <a href="/coloring-pages/">free coloring pages</a>.</p>',
+    make: `${CTRL.n}${CTRL.w}<p class="mk-note">Fewer slices and thicker lines are easier to color. Draw on the circle to add your own lines.</p>`,
+    title: 'Get your coloring page',
+    file: DL.pdf,
+    more: DL.png + DL.svg() + DL.dxf() + DL.sticker(true),
+  },
+  sticker: {
+    starters: ['flower-of-life-mandala', 'lotus-mandala', 'snowflake-mandala', 'mystic-rose-mandala', 'flower-mandala', 'dot-mandala', 'boho-mandala', 'name-mandala']
+      .map(s => startTile(s, `/img/stickers/${s}.svg`)),
+    surprise: 'medium,sacred',
+    make: `${CTRL.look}${CTRL.ink}${CTRL.bg}${CTRL.w}<div class="mk-if-words">${CTRL.words}${CTRL.open}${CTRL.openNote}${CTRL.wordsFiles}</div>`,
+    title: 'Get your sticker',
+    file: DL.sticker(false),
+    more: DL.pdf + DL.png + DL.svg() + DL.dxf(),
+  },
+  words: {
+    starters: FRAME_TEMPLATES.slice(0, 8).map(t => startTile(t.slug, `/img/templates/${t.slug}.svg`)),
+    surprise: 'frame',
+    svgStyle: 'lines',
+    after: '<p class="mk-note">A new frame keeps the words you typed.</p>',
+    make: `${CTRL.words}${CTRL.open}${CTRL.openNote}${CTRL.ink}${CTRL.w}`,
+    title: 'Get your design',
+    file: `${CTRL.wordsFiles}<p class="mk-note">Untick it to letter the words yourself: the files keep the center empty.</p>${DL.png}${DL.svg()}`,
+    more: DL.pdf + DL.dxf() + DL.sticker(true),
+  },
+  cut: {
+    starters: CUT_STARTERS.map(({ t, pieces }) => startTile(t.slug, `/img/templates/${t.slug}.svg`, pieces === 1 ? '1 piece' : `${pieces} pieces`)),
+    surprise: 'easy,sacred',
+    after: '<p class="mk-note">Pieces counted at 12 in with 0.08 in lines.</p>',
+    make: `${CTRL.n}<p class="mk-note">Shapes that don't touch another line cut out loose. Overlap them, or use Shapes to add a ring that ties them together. The count under the design updates as you go.</p>`,
+    title: 'Get your cut file',
+    file: machine => `<div class="mk-machine" role="radiogroup" aria-label="Machine">
+      <label><input type="radio" name="mk-machine" value="cricut"${machine !== 'laser' ? ' checked' : ''}> Cricut or Silhouette</label>
+      <label><input type="radio" name="mk-machine" value="laser"${machine === 'laser' ? ' checked' : ''}> Laser, CNC or plasma</label>
+    </div>${DL.svg('cricut')}${DL.dxf('laser')}`,
+    more: DL.pdf + DL.png + DL.sticker(true),
+  },
+};
 
 // ---------- coloring pages ----------
 const LEVELS = [
@@ -404,7 +513,9 @@ page({
 <div class="wrap hero">
 <h1>Free Mandala Maker</h1>
 <p class="lede">Draw one line and watch it bloom into a full mandala. Download it to color, print or cut, free and with no account.</p>
-<ul class="badges"><li>Free forever</li><li>No signup</li><li>No watermark</li><li>PNG · PDF · SVG · DXF</li></ul>
+<h2 class="goals-q">What are you making?</h2>
+<ul class="goals">${GOALS.map(g => `<li><a href="${g.path}"><img src="${g.img}" alt="" width="56" height="56"><span><strong>${esc(g.name)}</strong><small>${esc(g.blurb)}</small></span></a></li>`).join('')}
+<li><a href="#maker"><img src="/img/templates/lotus-mandala.svg" alt="" width="56" height="56"><span><strong>Just draw</strong><small>Every tool and format, right here</small></span></a></li></ul>
 </div>
 ${maker()}
 <div class="wrap section">
@@ -492,7 +603,7 @@ ${faqHTML(FAQ)}
 // Export landing pages
 const exportPages = [
   {
-    path: '/svg-for-cricut/', tab: 'download', template: 'flower-mandala',
+    path: '/svg-for-cricut/', goal: 'cut', machine: 'cricut', template: 'metatrons-cube-mandala',
     title: 'Free Mandala SVG Maker for Cricut and Silhouette',
     h1: 'Free Mandala SVG for Cricut',
     lede: 'Design a mandala and download a cut-ready SVG that opens in Cricut Design Space as solid shapes. Free, no signup, no watermark.',
@@ -505,9 +616,9 @@ const exportPages = [
     content: `
 <h2>How to make a mandala SVG for Cricut</h2>
 <ol class="steps">
-<li><strong>Design it.</strong> Draw in the maker above, or pick a template and change it.</li>
-<li><strong>Choose Cut-ready shapes.</strong> In Download, set SVG to Cut-ready shapes, then enter the width and a line thickness for your material.</li>
-<li><strong>Download the SVG.</strong> The maker merges overlapping lines into clean shapes and tells you if anything will come out as loose pieces.</li>
+<li><strong>Design it.</strong> Start from a design above, press Surprise me, or draw your own. The count under the design tells you how many pieces it cuts into.</li>
+<li><strong>Choose Cut-ready shapes.</strong> Under Get your cut file, keep Cricut or Silhouette and Cut-ready shapes, then enter the width and a line thickness for your material.</li>
+<li><strong>Download the SVG.</strong> The maker merges overlapping lines into clean shapes.</li>
 <li><strong>Upload to Design Space.</strong> Choose Upload, then Upload Image, pick the SVG, and add it to your canvas.</li>
 </ol>
 <h2>Tips for clean cuts</h2>
@@ -516,13 +627,14 @@ const exportPages = [
 <li><strong>Size first, then thickness.</strong> The SVG opens at the width you entered. If you resize it a lot in Design Space, the line thickness changes too.</li>
 <li><strong>Test on scrap.</strong> Intricate mandalas push a cutting mat's grip. Cut a small version first.</li>
 <li><strong>Use a stencil for paint.</strong> The Stencil option cuts the design out of a solid disc, which works for stencil vinyl and painting. Closed areas fall out of a stencil, so the maker counts them for you.</li>
+<li><strong>Loose pieces are fine on vinyl.</strong> Transfer tape holds every piece in place, so a design that cuts into many pieces still works as a vinyl decal. Paper, wood and metal need one connected piece.</li>
 </ul>
 <h2>Print then cut stickers</h2>
-<p>In Download, the Sticker option makes a round die-cut sticker: your mandala on a disc, a white border, bleed beyond the cut, and the cut line as a magenta hairline on its own layer named CutContour. Print then cut workflows and many sticker printers look for that layer. Or download the sticker PNG at 300 dpi for printers that trace the edge of the image. Add a name in the open center for gifts and party favors.</p>
-<p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a>, the <a href="/templates/flower-of-life-mandala/">Flower of Life</a> or the <a href="/templates/name-mandala/">name mandala</a> template, or see the <a href="/mandala-stickers/">mandala sticker maker</a>.</p>`,
+<p>The <a href="/mandala-stickers/">sticker maker</a> makes a round die-cut sticker: your mandala on a disc, a white border, bleed beyond the cut, and the cut line as a magenta hairline on its own layer named CutContour. Print then cut workflows and many sticker printers look for that layer. Or download the sticker PNG at 300 dpi for printers that trace the edge of the image. Add a name in the open center for gifts and party favors.</p>
+<p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a>, the <a href="/templates/flower-of-life-mandala/">Flower of Life</a> or the <a href="/templates/name-mandala/">name mandala</a> template.</p>`,
   },
   {
-    path: '/dxf-for-laser-and-plasma/', tab: 'download', template: 'star-mandala',
+    path: '/dxf-for-laser-and-plasma/', goal: 'cut', machine: 'laser', template: 'mystic-rose-mandala',
     title: 'Free Mandala DXF Maker for Laser, CNC and Plasma Cutting',
     h1: 'Free Mandala DXF for Laser and Plasma',
     lede: 'Design a mandala and download a DXF at real size, in inches or millimeters, with closed cut-ready outlines. Built by a metal fabrication studio.',
@@ -535,10 +647,10 @@ const exportPages = [
     content: `
 <h2>How to make a mandala DXF</h2>
 <ol class="steps">
-<li><strong>Design it.</strong> Draw in the maker above, or start from a template. Straight shapes like spikes and diamonds cut cleanest.</li>
-<li><strong>Pick a style.</strong> In Download, choose Cut-ready outlines, Stencil or Centerlines.</li>
+<li><strong>Design it.</strong> Start from a design above, press Surprise me, or draw your own. Straight shapes like spikes and diamonds cut cleanest.</li>
+<li><strong>Pick a style.</strong> Under Get your cut file, keep Laser, CNC or plasma and choose Cut-ready outlines, Stencil or Centerlines.</li>
 <li><strong>Set size and thickness.</strong> Enter the finished width and a line thickness your material can hold.</li>
-<li><strong>Download and check.</strong> The maker tells you how many separate pieces the design cuts into, so you can fix loose shapes before you cut.</li>
+<li><strong>Check, then download.</strong> The count under the design tells you how many separate pieces it cuts into at that size and thickness, so you can fix loose shapes before you cut.</li>
 </ol>
 <h2>Line thickness by machine</h2>
 <table class="fmt">
@@ -559,28 +671,28 @@ const exportPages = [
 <p>Read the full guide: <a href="/learn/how-to-laser-or-plasma-cut-a-mandala/">How to laser or plasma cut a mandala</a>.</p>`,
   },
   {
-    path: '/coloring-page-maker/', tab: 'download', template: 'easy-mandala-for-kids',
+    path: '/coloring-page-maker/', goal: 'coloring', template: 'easy-mandala-for-kids',
     title: 'Mandala Coloring Page Maker: Make and Print Your Own, Free',
     h1: 'Mandala Coloring Page Maker',
     lede: 'Make your own mandala coloring page and print it at US Letter or A4. Simple for kids or intricate for adults, free with no signup.',
     description: 'Make your own mandala coloring pages online and print them as PDF at Letter or A4. Easy designs for kids or intricate ones for adults. Free, no signup.',
     faq: [
-      ['How do I make a coloring page?', 'Design a mandala, open Download, keep "Coloring page" ticked, choose Letter or A4 and download the PDF. It prints with black lines on white, centered on the page.'],
-      ['How do I make it easier or harder to color?', 'For kids, use 6 or 8 slices, a thick line weight and a few big shapes. For adults, use 16 or more slices, a thin line and the Intricate setting on Surprise me.'],
+      ['How do I make a coloring page?', 'Pick a starting design or press Surprise me, change it if you like, then under Get your coloring page choose Letter or A4 and download the PDF. It prints with black lines on white, centered on the page.'],
+      ['How do I make it easier or harder to color?', 'For kids, use 6 or 8 slices, a thick line weight and a few big shapes. For adults, use 16 or more slices, a thin line, and Intricate next to Surprise me.'],
       ['Can I print copies for my class?', 'Yes. Print as many copies as you like for your classroom, group or family.'],
     ],
     content: `
 <h2>Make a printable mandala in four steps</h2>
 <ol class="steps">
-<li><strong>Pick a look.</strong> Start from a template, press Surprise me, or draw your own.</li>
+<li><strong>Pick a look.</strong> Start from a design above, choose a detail level and press Surprise me, or draw your own.</li>
 <li><strong>Set the detail.</strong> Fewer slices and thicker lines make it easier to color. More slices and thinner lines make it intricate.</li>
-<li><strong>Download the PDF.</strong> Choose US Letter or A4 with Coloring page ticked.</li>
+<li><strong>Download the PDF.</strong> Choose US Letter or A4. Coloring page keeps it black lines on white.</li>
 <li><strong>Print and color.</strong> Print at 100 percent scale on plain or heavier paper.</li>
 </ol>
 <h2>Printing tips</h2>
 <ul>
 <li>Heavier paper, around 28 lb or 100 gsm and up, takes markers without bleeding through.</li>
-<li>For digital coloring apps, download a PNG instead.</li>
+<li>For digital coloring apps, download a PNG instead, under Other formats.</li>
 <li>Coloring with a group? Use the share link so everyone opens the same design.</li>
 </ul>
 <p>Or print one that's ready now from the <a href="/coloring-pages/">free mandala coloring pages</a>.</p>`,
@@ -595,7 +707,7 @@ for (const p of exportPages) {
     crumbs: [['/', 'Home'], [p.path, p.h1]],
     schema: [faqSchema(p.faq)],
     body: `<div class="wrap hero"><h1>${esc(p.h1)}</h1><p class="lede">${esc(p.lede)}</p></div>
-${maker({ template: p.template, tab: p.tab })}
+${maker({ template: p.template, goal: p.goal, machine: p.machine })}
 <div class="wrap section narrow article">${p.content}
 <h2>Questions</h2>${faqHTML(p.faq)}</div>`,
   });
@@ -698,7 +810,7 @@ ${templateTiles(null, SACRED_TEMPLATES)}
 // Mandala frames: an open center for words, for wall tags, signs and cards.
 {
   const faq = [
-    ['Can I put a quote in the middle?', 'Yes, up to two lines of 30 characters each, sized to fit the opening. For a longer quote, untick Put the words in downloads, download the frame, and set the quote in your own design software.'],
+    ['Can I put a quote in the middle?', 'Yes, up to two lines of 30 characters each, sized to fit the opening. For a longer quote, untick Put the words in downloads under Get your design, download the frame, and set the quote in your own design software.'],
     ['How do I make a monogram?', 'Type a single capital letter as the words. The laurel wreath and petal frames suit a monogram, with the serif lettering.'],
     ['Can I use my own font?', 'The maker letters in serif or sans serif. For any other font, untick Put the words in downloads and add your lettering in your design or cutting software. The words stay in the maker as a preview.'],
     ['Can I sell what I make with these frames?', 'Yes. The frames and everything you make with them are free to use, including on wall tags, signs, cards and stickers you sell.'],
@@ -718,24 +830,24 @@ ${templateTiles(null, SACRED_TEMPLATES)}
     sitemapImages: FRAME_TEMPLATES.map(t => `${SITE}/img/templates/${t.slug}.svg`),
     schema: [faqSchema(faq)],
     body: `<div class="wrap hero"><h1>Mandala Frames for Words</h1><p class="lede">Simple mandalas with the center left open for a name, a quote or a date. Made for wall tags, signs, cards, ornaments and name stickers. Type your words, or download the frame alone and letter it yourself.</p></div>
-${maker({ template: 'petal-frame-mandala', level: 'frame' })}
+${maker({ template: 'petal-frame-mandala', goal: 'words' })}
 <div class="wrap section">
 <h2>Frames to start from</h2>
-<p>Each one opens in the maker with sample words. For a new frame every time, choose Open center for words next to Surprise me: your words stay as they are.</p>
+<p>Each one has its own page with sample words. In the maker, a new frame from the starting designs or Surprise me keeps the words you typed.</p>
 ${templateTiles(null, FRAME_TEMPLATES)}
 </div>
 <div class="wrap section narrow article">
 <h2>How to make a mandala frame</h2>
 <ol class="steps">
-<li><strong>Pick a frame.</strong> Choose one above, or press Surprise me with Open center for words selected.</li>
-<li><strong>Type your words.</strong> In Design, under Open center for words, type up to two lines and pick serif or sans serif lettering. The words are sized to fit the opening.</li>
+<li><strong>Pick a frame.</strong> Choose one of the starting designs, or press Surprise me for a new one.</li>
+<li><strong>Type your words.</strong> Under Make it yours, type up to two lines and pick serif or sans serif lettering. The words are sized to fit the opening.</li>
 <li><strong>Size the opening.</strong> Slide Opening to make more room or less. The maker shows the opening as a share of the design's width, and how wide it prints on a page and on a sticker.</li>
-<li><strong>Download.</strong> A PNG or PDF to print, a line drawing SVG for your design software, a sticker, or a cut-ready SVG or DXF.</li>
+<li><strong>Download.</strong> A PNG to print, or a line drawing SVG for your design software. A PDF, a sticker, or a cut-ready SVG or DXF are under Other formats.</li>
 </ol>
 <h2>For wall tags, signs and screen printing</h2>
-<p>Small pieces need bold lines. These frames use a line weight of 4.5 to 6, which prints about 0.3 mm wide on a design 2 inches across: enough for screen printing and laser engraving. Going smaller, or printing with a coarse screen? Raise Line weight in Design.</p>
-<p>To set the words in your own lettering, untick <strong>Put the words in downloads</strong> in Design, then download a <strong>Line drawing</strong> SVG at the size you need. It has a transparent background and an empty center, so you can place it on your tag or sign and add the words in your own software. The words stay in the maker as a preview.</p>
-<p>For a cut frame in vinyl, paper, wood or metal, download a cut-ready SVG or a DXF. Cut files always leave the center open.</p>
+<p>Small pieces need bold lines. These frames use a line weight of 4.5 to 6, which prints about 0.3 mm wide on a design 2 inches across: enough for screen printing and laser engraving. Going smaller, or printing with a coarse screen? Raise Line weight under Make it yours.</p>
+<p>To set the words in your own lettering, untick <strong>Put the words in downloads</strong> under Get your design, then download a <strong>Line drawing</strong> SVG at the size you need. It has a transparent background and an empty center, so you can place it on your tag or sign and add the words in your own software. The words stay in the maker as a preview.</p>
+<p>For a cut frame in vinyl, paper, wood or metal, switch Making to Cut file. Cut files always leave the center open.</p>
 <h2>How much room for words</h2>
 <p>The opening of each frame, inside its line, as a share of the frame's width and at two sizes:</p>
 <table class="fmt">
@@ -746,7 +858,7 @@ ${sizes.map(({ t, share }) => `<tr><td><a href="/templates/${t.slug}/">${esc(t.n
 </table>
 <p>Need a frame for a tag or sign of another size? Multiply its width by the share. The Opening slider changes it.</p>
 <h2>Name stickers</h2>
-<p>A frame with a name makes a good round sticker or party favor. In Download, under Sticker, choose the size and the look. See the <a href="/mandala-stickers/">mandala sticker maker</a> for more.</p>
+<p>A frame with a name makes a good round sticker or party favor. Switch Making to Sticker to choose the size and the look, or see the <a href="/mandala-stickers/">mandala sticker maker</a>.</p>
 <h2>Questions</h2>${faqHTML(faq)}
 </div>`,
   });
@@ -759,7 +871,7 @@ ${sizes.map(({ t, share }) => `<tr><td><a href="/templates/${t.slug}/">${esc(t.n
     ['What is the CutContour layer?', 'CutContour is the name print-and-cut software and many print shops look for to find the cut line. The sticker SVG puts the cut line, a thin magenta circle, on a layer of its own with that name, and everything that prints in a group called artwork.'],
     ['What size should a sticker be?', 'Round stickers are most often 2 to 4 inches across. The maker starts at 3 inches, measured across the cut line, with a 0.1 inch white border. Enter any size in inches or millimeters.'],
     ['Will it work with Cricut Print Then Cut?', 'Yes. Upload the sticker PNG to Design Space as a Print Then Cut image, and Cricut cuts around the edge of the white border. Check the size in Design Space before you print.'],
-    ['Can I put a name on a sticker?', 'Yes. In Design, type a name or a date under Open center for words, or start from one of the <a href="/mandala-frames/">mandala frames for words</a>. The maker shows how wide the opening is on your sticker.'],
+    ['Can I put a name on a sticker?', 'Yes. Start from the name mandala, or from one of the <a href="/mandala-frames/">mandala frames for words</a> and switch Making to Sticker. Type a name or a date under Make it yours, and the maker shows how wide the opening is on your sticker.'],
   ];
   const stD = templateDesign('flower-of-life-mandala');
   write('img/og/mandala-stickers.png', png(socialCard(stD, 'Mandala Sticker Maker', 'Die-cut SVG and PNG. Free.'), 1200));
@@ -778,7 +890,7 @@ ${sizes.map(({ t, share }) => `<tr><td><a href="/templates/${t.slug}/">${esc(t.n
       } })),
     }],
     body: `<div class="wrap hero"><h1>Mandala Sticker Maker</h1><p class="lede">Turn any mandala into a round die-cut sticker. Download an SVG with bleed and a CutContour cut line for print then cut, or a 300 dpi PNG for sticker printers. Free, with no signup.</p></div>
-${maker({ template: 'flower-of-life-mandala', tab: 'download', dlFirst: 'sticker' })}
+${maker({ template: 'flower-of-life-mandala', goal: 'sticker' })}
 <div class="wrap section">
 <h2>Mandalas that make great stickers</h2>
 <p>Detailed enough to look rich at three inches and drawn with lines that hold up when printed small. Each sticker SVG is ready to print and cut at 3 inches; open one in the maker to change its size, colors or border.</p>
@@ -791,9 +903,9 @@ ${stickerTiles(WORD_STICKERS)}
 <div class="wrap section narrow article">
 <h2>How to make a mandala sticker</h2>
 <ol class="steps">
-<li><strong>Pick a design.</strong> Start from a sticker above, press Surprise me, or draw your own.</li>
-<li><strong>Choose a look.</strong> In Download, under Sticker, keep your own colors or pick Night glow for gold lines on a dark disc.</li>
-<li><strong>Set the size.</strong> Enter the size across the cut line, 3 inches to start, and the width of the white border.</li>
+<li><strong>Pick a design.</strong> Start from one of the starting designs, press Surprise me, or draw your own.</li>
+<li><strong>Choose a look.</strong> Under Make it yours, keep your own colors or pick Night glow for gold lines on a dark disc.</li>
+<li><strong>Set the size.</strong> Enter the size across the cut line, 3 inches to start, and the width of the white border. The note under the design tells you how wide the thinnest lines print at that size.</li>
 <li><strong>Download.</strong> The sticker SVG for print then cut, or the sticker PNG for online sticker printers.</li>
 </ol>
 <h2>Which file to use</h2>
@@ -807,9 +919,9 @@ ${stickerTiles(WORD_STICKERS)}
 </table>
 <h2>Tips for small stickers</h2>
 <ul>
-<li><strong>Lines.</strong> The sticker file never draws a line thinner than 0.12 mm, so fine detail still prints. For stickers under 2 inches, a Line weight of 4 or more in Design keeps them crisp.</li>
+<li><strong>Lines.</strong> The sticker file never draws a line thinner than 0.12 mm, so fine detail still prints. For stickers under 2 inches, a Line weight of 4 or more keeps them crisp.</li>
 <li><strong>Words.</strong> On a 3 inch sticker, aim for an opening of an inch or more for a name. The maker shows it as you slide Opening.</li>
-<li><strong>Colors.</strong> Set the line and background colors in Design. Night glow turns dark lines gold on a deep indigo disc, with a soft glow behind the center.</li>
+<li><strong>Colors.</strong> Set the line and background colors under Make it yours. Night glow turns dark lines gold on a deep indigo disc, with a soft glow behind the center.</li>
 </ul>
 <h2>Questions</h2>${faqHTML(faq)}
 </div>`,
@@ -823,7 +935,13 @@ page({
   crumbs: [['/', 'Home'], ['/templates/', 'Templates']],
   sitemapImages: TEMPLATES.map(t => `${SITE}/img/templates/${t.slug}.svg`),
   body: `<div class="wrap hero"><h1>Mandala Templates</h1><p class="lede">Each template opens in the free maker, where you can change the symmetry, shapes and colors, then download it to print or cut.</p></div>
-<div class="wrap section"><h2>Frames with an open center for words</h2>
+<div class="wrap section"><h2>Ready to download now</h2>
+<div class="grid-3">
+<article class="card"><h3><a href="/coloring-pages/">Printable coloring pages</a></h3><p>${coloring.length} mandala coloring pages in Letter and A4 PDF, from easy designs for kids to intricate and sacred geometry pages for adults.</p></article>
+<article class="card"><h3><a href="/mandala-stickers/">Sticker files</a></h3><p>Round die-cut stickers at 3 inches, with bleed and a CutContour cut line, ready to print and cut.</p></article>
+<article class="card"><h3><a href="/sacred-geometry/">Sacred geometry</a></h3><p>The Flower of Life, Metatron's Cube and more on their own, as SVG, cut-ready SVG and DXF, and PDF.</p></article>
+</div>
+<h2>Frames with an open center for words</h2>
 <p>Simple, bold designs with room in the middle for a name, a quote or a date, for wall tags, signs and cards. <a href="/mandala-frames/">More about mandala frames</a>.</p>${templateTiles(null, FRAME_TEMPLATES)}
 <h2>Sacred geometry templates</h2>${templateTiles(null, SACRED_TEMPLATES)}
 <h2>Mandala templates</h2>${templateTiles(null, MANDALA_TEMPLATES)}
@@ -845,6 +963,7 @@ for (const t of TEMPLATES) {
     }],
     body: `<div class="wrap hero"><h1>${esc(t.name)} Template</h1><p class="lede">${esc(t.blurb)}</p></div>
 ${maker({ template: t.slug })}
+<div class="wrap use-for"><span>Use this design for</span>${GOALS.map(g => `<a class="btn ghost" href="${g.path}?template=${t.slug}">${esc(g.name)}</a>`).join('')}</div>
 <div class="wrap section">
 <div class="two-col">
 <div>

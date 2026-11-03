@@ -14,6 +14,10 @@ Duet, which also pushes to this repo. DEPLOY.md was written for Duet's container
   center and its words (`d.open`, `d.text`, `d.font`), and the die-cut sticker (`stickerSVG`)
   were ported from the older mandala-studio project on 2026-10-28.
 - `src/js/app.js`: the maker's UI, bundled by esbuild into `dist/js/maker.js`.
+  Goal pages (coloring page, sticker, words in the center, cut file) show the maker with one goal's
+  starting designs, controls and files as three steps: `GOALS` and `GOAL_UI` in `build.mjs`,
+  `maker({ goal })`. The home page, templates and sacred geometry keep the full tabbed maker. Controls
+  are named pieces (`CTRL`, `DL`), and app.js skips any a page leaves out.
 - `src/content.mjs`: `FAQ` and the `ARTICLES` (guides).
 - `src/build.mjs`: the pages, sitemap, schema and assets, written to `dist/`. `/sacred-geometry/` also writes
   free downloads of each figure to `dist/files/sacred-geometry/`.

@@ -37,7 +37,7 @@ p { margin: 0 0 1em; }
 .brand svg { width: 30px; height: 30px; }
 .nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 .nav a { color: var(--ink-2); text-decoration: none; padding: 6px 10px; border-radius: 8px; font-size: .95rem; }
-.nav a:hover, .nav a[aria-current="page"] { background: var(--accent-soft); color: var(--ink); }
+.nav a:hover, .nav a[aria-current] { background: var(--accent-soft); color: var(--ink); }
 @media (max-width: 720px) {
   .site-head .wrap { flex-wrap: wrap; padding: 8px 0; gap: 4px; }
   .nav { margin-left: 0; width: 100%; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
@@ -118,7 +118,34 @@ p { margin: 0 0 1em; }
 .mk-dl h3 { margin: 0; font: 700 1rem var(--sans); display: flex; align-items: baseline; gap: 8px; }
 .mk-dl h3 small { font-weight: 400; color: var(--muted); font-size: .82rem; }
 .mk-dl [hidden] { display: none !important; }
-.maker[data-dl-first="sticker"] .mk-dl-sticker { order: -1; }
+/* goal panels: one goal's starting designs, controls and files, as three steps */
+.mk-goal-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: .92rem; color: var(--ink-2); }
+.mk-goal-head select { flex: 1; font: 600 .95rem var(--sans); padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+.mk-step { display: flex; flex-direction: column; gap: 10px; }
+.mk-step + .mk-step { border-top: 1px solid var(--line); padding-top: 14px; }
+.mk-step h3 { display: flex; align-items: center; gap: 8px; margin: 0; font: 700 1rem var(--sans); }
+.mk-step h3 span { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: .82rem; flex: none; }
+.mk-note { font-size: .86rem; color: var(--muted); margin: 0; }
+.mk-starters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mk-panel .mk-start { padding: 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: #fff; }
+.mk-start img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+.mk-start small { font-size: .74rem; color: var(--muted); font-weight: 500; }
+.mk-more { border-top: 1px dashed var(--line); padding-top: 10px; }
+.mk-more summary { cursor: pointer; font-weight: 600; color: var(--indigo); font-size: .92rem; }
+.mk-more[open] summary { margin-bottom: 10px; }
+.mk-more .mk-dl + .mk-dl { margin-top: 8px; }
+.mk-machine { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mk-machine label { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; font-size: .88rem; cursor: pointer; line-height: 1.25; }
+.mk-machine label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.mk-machine input { accent-color: var(--accent); margin: 0; }
+.maker[data-machine="laser"] .mk-dl[data-machine="cricut"], .maker[data-machine="cricut"] .mk-dl[data-machine="laser"] { display: none; }
+.mk-if-words { display: none; }
+.maker.show-words .mk-if-words { display: flex; flex-direction: column; gap: 10px; }
+.mk-panel .mk-back { align-self: flex-start; }
+.mk-status { display: flex; align-items: center; gap: 12px; margin: 0; font-size: .9rem; padding: 8px 12px; border-radius: 9px; background: #e8f3ec; color: #1f5b37; }
+.mk-status img { width: 64px; height: 64px; flex: none; filter: drop-shadow(0 1px 3px rgba(36, 32, 63, .25)); }
+.mk-status.warn { background: #fdf1e3; color: #7a4510; }
+.mk-status[hidden] { display: none; }
 .mk-toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, calc(100% + 40px)); visibility: hidden; background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; max-width: min(520px, 92vw); font-size: .95rem; box-shadow: var(--shadow); transition: transform .25s ease; z-index: 50; }
 .mk-toast.show { transform: translate(-50%, 0); visibility: visible; }
 .mk-toast:empty { display: none; }
@@ -127,6 +154,26 @@ p { margin: 0 0 1em; }
   .mk-panel { max-height: none; }
   .mk-canvas { max-height: none; }
 }
+
+/* home: what are you making? */
+.goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; list-style: none; padding: 0; margin: 14px 0 0; }
+.goals a { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; text-decoration: none; color: var(--ink); height: 100%; transition: border-color .15s, transform .15s; }
+.goals a:hover { border-color: var(--accent); transform: translateY(-2px); color: var(--ink); }
+.goals img { width: 56px; height: 56px; flex: none; }
+.goals strong { display: block; font-size: 1rem; }
+.goals small { display: block; color: var(--muted); font-size: .85rem; line-height: 1.35; }
+.goals-q { font: 600 1.05rem var(--sans); color: var(--ink-2); margin: 18px 0 0; }
+@media (max-width: 520px) {
+  .goals { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .goals li:last-child { grid-column: 1 / -1; }
+  .goals a { gap: 8px; padding: 8px; }
+  .goals img { width: 40px; height: 40px; }
+  .goals strong { font-size: .92rem; }
+  .goals small { font-size: .78rem; }
+}
+.use-for { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.use-for > span { font-weight: 600; color: var(--ink-2); margin-right: 4px; }
+.use-for .btn { padding: 7px 14px; font-size: .92rem; }
 
 /* content */
 .section { padding: 8px 0 24px; }
