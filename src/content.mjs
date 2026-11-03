@@ -19,7 +19,7 @@ export const ARTICLES = [
     date: '2026-10-28',
     title: 'What Is a Mandala? Meaning, History and How They\'re Used',
     short: 'What is a mandala?',
-    description: 'What a mandala is, where the word comes from, how mandalas are used in Hindu and Buddhist practice, and how the design shows up in art, coloring and craft today.',
+    description: 'What a mandala is, where the word comes from, how mandalas are used in Hindu and Buddhist practice, and how the design shows up in art, coloring and craft.',
     template: 'lotus-mandala',
     body: `
 <p>A mandala is a design organized around a center, usually inside a circle, with its parts repeating evenly around that center. The word comes from Sanskrit, where it is most often translated as "circle." In Hindu and Buddhist traditions a mandala is much more than a pattern: it is a sacred diagram, used in ritual and meditation to represent the universe or a realm centered on a deity.</p>
@@ -66,7 +66,7 @@ export const ARTICLES = [
     date: '2026-10-28',
     title: 'How to Draw a Mandala: A Step-by-Step Guide for Beginners',
     short: 'How to draw a mandala',
-    description: 'Draw a mandala by hand in eight steps: set up guide circles, divide the circle into equal slices, build rings of shapes from the center out, then ink and color. Plus tips and a free online maker.',
+    description: 'Draw a mandala by hand in eight steps: set up guide circles, divide the circle into equal slices, build rings of shapes from the center out, then ink and color.',
     template: 'flower-mandala',
     body: `
 <p>Drawing a mandala looks complicated, but it comes down to one idea: draw a shape, then repeat it evenly around a center. Once you set up a few guidelines, the symmetry does most of the work. This guide walks through drawing one by hand, then shows how to do the same thing in a few minutes online.</p>
@@ -127,9 +127,9 @@ export const ARTICLES = [
   {
     slug: 'how-to-laser-or-plasma-cut-a-mandala',
     date: '2026-10-28',
-    title: 'How to Laser or Plasma Cut a Mandala: File Prep, Bridges and Kerf',
+    title: 'How to Laser or Plasma Cut a Mandala: Bridges and Kerf',
     short: 'Laser and plasma cutting a mandala',
-    description: 'Prepare a mandala for a laser cutter or CNC plasma table: choose the right file type, set line thickness for your material, avoid loose pieces, and plan for kerf and heat.',
+    description: 'Prepare a mandala for a laser cutter or plasma table: the right file type, line thickness for your material, no loose pieces, and planning for kerf and heat.',
     template: 'star-mandala',
     body: `
 <p>A mandala makes a beautiful cut piece, whether it's a wood coaster on a desktop laser or a steel wall panel on a CNC plasma table. It is also one of the easier designs to get wrong, because mandalas are full of small, closed shapes that can fall out, burn up or warp. This guide covers how to prepare a mandala file so it cuts cleanly the first time.</p>
@@ -188,9 +188,9 @@ export const ARTICLES = [
   {
     slug: 'how-to-cut-a-mandala-on-cricut',
     date: '2026-10-28',
-    title: 'How to Cut a Mandala on a Cricut: SVG Setup, Sizing and Weeding',
+    title: 'How to Cut a Mandala on a Cricut: SVG Setup and Weeding',
     short: 'Cutting a mandala on a Cricut',
-    description: 'Make a mandala SVG that cuts cleanly on a Cricut: choose a cut-ready file, set the size and line thickness, upload it to Design Space, and weed it without tearing.',
+    description: 'Make a mandala SVG that cuts cleanly on a Cricut: choose a cut-ready file, set size and line thickness, upload it to Design Space, and weed without tearing.',
     template: 'heart-mandala',
     body: `
 <p>Mandalas are one of the most popular designs to cut on a Cricut, for vinyl decals, iron-on shirts, paper cuts and layered cards. They are also one of the easiest to get wrong. A mandala found online is often a drawing made of thin strokes, and a Cricut treats every stroke as a hairline outline. You end up with a design that cuts into confetti or won't cut at all. This guide shows how to make a mandala SVG that cuts cleanly the first time.</p>

@@ -12,6 +12,8 @@ import {
   emptyDesign, normalizeDesign, ringLayer, cutOutlines, cutSVG, toDXF, boundsOf, countPieces, stickerSVG, hasOpenCenter, openingSizes,
 } from './js/core.js';
 import { FAQ, ARTICLES } from './content.mjs';
+import { lastmodDates } from './lastmod.mjs';
+import { checkSite, printReport } from './seo-check.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, '..');
@@ -143,7 +145,6 @@ const SITEMAP = [];
 
 function page(o) {
   const url = SITE + o.path;
-  if (!o.noindex) SITEMAP.push({ loc: url, img: o.sitemapImages || [] });
   const og = SITE + (o.ogImage || '/img/og/home.png');
   const crumbs = o.crumbs ? `<nav class="crumbs" aria-label="Breadcrumb">${o.crumbs.map(([href, label], i) => i < o.crumbs.length - 1 ? `<a href="${href}">${esc(label)}</a> › ` : `<span>${esc(label)}</span>`).join('')}</nav>` : '';
   const schemas = [...(o.schema || [])];
@@ -194,13 +195,14 @@ ${o.body}
 <div><h4>${BRAND}</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
 <div><h4>Make</h4><ul><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li><li><a href="/">The full mandala maker</a></li></ul></div>
 <div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
-<div><h4>Learn</h4><ul>${ARTICLES.map(a => `<li><a href="/learn/${a.slug}/">${esc(a.short)}</a></li>`).join('')}<li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
+<div><h4>Learn</h4><ul>${ARTICLES.map(a => `<li><a href="/learn/${a.slug}/">${esc(a.short)}</a></li>`).join('')}<li><a href="/about/">About</a></li><li><a href="/license/">License</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
 </div>
 <p class="fine">Made in Reno, Nevada by <a href="https://superfablab.com">SuperFabLab</a>, a metal fabrication studio. © 2026 ${BRAND}.</p>
 </div></footer>
 </body>
 </html>
 `;
+  if (!o.noindex) SITEMAP.push({ path: o.path, img: o.sitemapImages || [], html });
   write(o.path === '/' ? 'index.html' : o.path.replace(/^\//, '') + (o.path.endsWith('/') ? 'index.html' : ''), html);
 }
 
@@ -353,6 +355,10 @@ const ORG = {
   '@context': 'https://schema.org', '@type': 'Organization', name: BRAND, url: SITE + '/', logo: SITE + '/icon-512.png',
   parentOrganization: { '@type': 'Organization', name: 'SuperFabLab', url: 'https://superfablab.com' },
 };
+// Everything on the site is free to use, including on things people sell: see /license/.
+const IMAGE_RIGHTS = { license: SITE + '/license/', acquireLicensePage: SITE + '/license/', creditText: BRAND, copyrightNotice: `© 2026 ${BRAND}` };
+// The first wording of a title or description that fits, or the last one if none does.
+const fitText = (max, ...options) => options.find(s => s.length <= max) ?? options[options.length - 1];
 const faqHTML = items => `<div class="faq">${items.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${a}</p></details>`).join('')}</div>`;
 const faqSchema = items => ({
   '@context': 'https://schema.org', '@type': 'FAQPage',
@@ -448,14 +454,66 @@ const GOAL_UI = {
 };
 
 // ---------- coloring pages ----------
+// about and tips describe what randomDesign makes at each level: keep them true if it changes.
 const LEVELS = [
-  { key: 'easy', name: 'Easy', title: 'Easy Mandala Coloring Pages', blurb: 'Big shapes and thick lines for kids, beginners and relaxed coloring.', seeds: [11, 23, 37, 41, 59, 61, 79, 83] },
-  { key: 'medium', name: 'Medium', title: 'Mandala Coloring Pages', blurb: 'A balance of detail and space, for an afternoon of coloring.', seeds: [101, 131, 151, 181, 191, 211, 241, 271] },
-  { key: 'intricate', name: 'Intricate', title: 'Intricate Mandala Coloring Pages for Adults', blurb: 'Fine lines and dense rings for detailed adult coloring.', seeds: [307, 331, 347, 367, 389, 409, 431, 457] },
+  { key: 'easy', name: 'Easy', title: 'Easy Mandala Coloring Pages', blurb: 'Big shapes and thick lines for kids, beginners and relaxed coloring.', seeds: [11, 23, 37, 41, 59, 61, 79, 83],
+    about: 'Easy pages have a few rings of big, simple shapes drawn with thick lines, so every space is roomy enough for crayons and chunky markers. They suit young kids, beginners and anyone who wants a short, relaxing page.',
+    tips: ['Crayons and washable markers both work. Print on heavier paper if you use markers.', 'Pick two or three colors and repeat them ring by ring for a bold, tidy look.', 'Coloring with a group? Print a few different pages, or open one in the maker and press Surprise me for a new design each.'] },
+  { key: 'medium', name: 'Medium', title: 'Mandala Coloring Pages', blurb: 'A balance of detail and space, for an afternoon of coloring.', seeds: [101, 131, 151, 181, 191, 211, 241, 271],
+    about: 'Medium pages have more rings than the easy ones, and some rings repeat twice as many shapes as there are slices. There\'s enough detail to fill an afternoon, without the tiny spaces of the intricate pages.',
+    tips: ['Fine-line markers and colored pencils suit these lines best.', 'Work from the center out, so your hand doesn\'t smudge what you\'ve finished.', 'Try one color in three shades, light to dark from the center, for a calm, finished look.'] },
+  { key: 'intricate', name: 'Intricate', title: 'Intricate Mandala Coloring Pages for Adults', blurb: 'Fine lines and dense rings for detailed adult coloring.', seeds: [307, 331, 347, 367, 389, 409, 431, 457],
+    about: 'Intricate pages pack many rings onto high symmetry, with thin lines and shapes drawn with smaller copies inside them. They\'re slow, absorbing pages that reward a steady hand.',
+    tips: ['Use fine-tip markers, gel pens or well-sharpened colored pencils.', 'Smooth, heavier paper lets fine tips glide and keeps colors inside the lines.', 'Color one ring at a time all the way around, so the pattern stays even.'] },
   { key: 'sacred-geometry', name: 'Sacred geometry', level: 'sacred', title: 'Sacred Geometry Coloring Pages', blurb: 'The Flower of Life, Metatron\'s Cube, golden spirals and more at the center, ringed with petals and arches.', seeds: [503, 521, 547, 563, 587, 601, 619, 643],
-    figs: ['flower', 'seed', 'metatron', 'flower', 'spiral', 'rose', 'seed', 'stars'] },
+    figs: ['flower', 'seed', 'metatron', 'flower', 'spiral', 'rose', 'seed', 'stars'],
+    about: 'Each page puts a sacred geometry figure at the center, such as the Flower of Life, the Seed of Life or Metatron\'s Cube, ringed with bands of shapes like petals, leaves, arches and dots. The figures are drawn from true circles and straight lines.',
+    tips: ['Shade the overlapping circles of the figure in alternating colors to bring out its petals.', 'Colored pencils handle the fine, crossing lines at the center best.', 'Want a figure on its own? Download it from the <a href="/sacred-geometry/">sacred geometry</a> page.'] },
 ];
 const SHAPE_WORD = { petal: 'Petal', leaf: 'Leaf', drop: 'Teardrop', dot: 'Dot', diamond: 'Diamond', spike: 'Star', arch: 'Arch', heart: 'Heart', square: 'Square', line: 'Sunburst', circle: 'Ring', scallop: 'Scallop', zigzag: 'Star', wave: 'Wave' };
+const titleCase = s => s.split(' ').map((w, i) => i && /^(of|and|the)$/.test(w) ? w : w[0].toUpperCase() + w.slice(1)).join(' ');
+const andList = a => a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+// Rounded, so a count that differs by one between machines doesn't change the page.
+const roughly = v => v < 50 ? Math.round(v / 5) * 5 : v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 50) * 50;
+
+// What a coloring page is made of, read from its design, so each page describes itself: the rings
+// from the center out, how many spaces there are to color, and how wide the lines print.
+const PLURAL = { petal: 'petals', leaf: 'leaves', drop: 'teardrops', dot: 'dots', diamond: 'diamonds', spike: 'spikes', arch: 'arches', heart: 'hearts', square: 'squares', line: 'rays', scallop: 'scallops', zigzag: 'zigzags', wave: 'waves' };
+const BAND = { scallop: 'a scalloped band', zigzag: 'a zigzag band', wave: 'a wavy band' };
+// How each figure reads in a sentence, and whether it takes "are".
+const FIGURE_NOUN = { flower: 'the Flower of Life', seed: 'the Seed of Life', metatron: "Metatron's Cube", stars: 'stars within stars', rose: 'a mystic rose', spiral: 'golden spirals', times: 'a times table circle' };
+const PLURAL_FIGURES = new Set(['stars', 'spiral']);
+// Rings in a sentence, with repeats run together: "two scalloped bands", "two rings of 12 dots".
+const NUMBER = ['', '', 'two', 'three', 'four', 'five'];
+function ringList(rings) {
+  const runs = [];
+  for (const r of rings) { const last = runs[runs.length - 1]; if (last?.r === r) last.k++; else runs.push({ r, k: 1 }); }
+  return andList(runs.map(({ r, k }) => k === 1 ? r : r.startsWith('a ') ? `${NUMBER[k] || k} ${r.slice(2)}s` : `${NUMBER[k] || k} rings of ${r}`));
+}
+function coloringFacts(d) {
+  const rings = [], kinds = [];
+  let figure = null;
+  for (const l of d.layers) {
+    const s = SHAPES[l.shape];
+    if (s.kind === 'figure') {
+      const v = s.variations[(l.mult || 1) - 1].replace(/\s*\(.*\)/, '');
+      figure = { shape: l.shape, v: l.mult || 1, noun: FIGURE_NOUN[l.shape], are: PLURAL_FIGURES.has(l.shape), variation: /^[A-Z][^A-Z]*$/.test(v) ? v[0].toLowerCase() + v.slice(1) : v };
+      continue;
+    }
+    if (l.shape === 'circle') continue;
+    if (!kinds.includes(PLURAL[l.shape])) kinds.push(PLURAL[l.shape]);
+    const echo = l.shape === 'line' ? 0 : l.echo; // rays are open lines, which buildPaths never echoes
+    rings.push(BAND[l.shape] || `${d.n * (l.mult || 1)} ${echo ? (echo === 1 ? 'double-lined ' : 'triple-lined ') : ''}${PLURAL[l.shape]}`);
+  }
+  // The spaces are the areas a stencil of the lines would cut out, less the margin outside the last ring.
+  const spaces = roughly(countPieces(cutOutlines(buildPaths(d), ClipperLib, { stencil: true })) - 1);
+  // Line width on a Letter page, which pdfContent fits inside 40 point margins.
+  const b = boundsOf(buildPaths(d));
+  const lineMM = (d.w * (612 - 80) / Math.max(b.x1 - b.x0, b.y1 - b.y0)) * 25.4 / 72;
+  return { rings, kinds, figure, spaces, lineMM };
+}
+const lineAdvice = mm => mm >= 0.65 ? 'bold enough for crayons and markers'
+  : mm >= 0.45 ? 'good for markers and colored pencils' : 'best with fine-tip markers, gel pens or sharp colored pencils';
 const coloring = [];
 for (const lv of LEVELS) {
   lv.seeds.forEach((seed, i) => {
@@ -467,7 +525,7 @@ for (const lv of LEVELS) {
     const num = String(i + 1).padStart(2, '0');
     let name, slug;
     if (lv.level === 'sacred') {
-      const fig = SHAPES[d.layers[0].shape].label; // the figure at the center names the page
+      const fig = titleCase(SHAPES[d.layers[0].shape].label); // the figure at the center names the page
       name = `${fig} Mandala ${num}`;
       slug = `${fig.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-')}-mandala-${num}`;
     } else {
@@ -475,7 +533,7 @@ for (const lv of LEVELS) {
       name = `${lv.name === 'Medium' ? '' : lv.name + ' '}${word} Mandala ${num}`.trim();
       slug = `${word.toLowerCase()}-mandala-${num}`;
     }
-    coloring.push({ d, lv, name, slug, n: d.n });
+    coloring.push({ d, lv, name, slug, n: d.n, facts: coloringFacts(d) });
   });
 }
 for (const c of coloring) {
@@ -493,9 +551,9 @@ for (const c of coloring) {
 // Home
 page({
   path: '/',
-  title: 'Free Mandala Maker: Create and Download Mandalas as SVG, PNG, PDF and DXF',
+  title: 'Free Mandala Maker: Draw and Download SVG, PNG, PDF and DXF',
   ogTitle: 'Free Mandala Maker',
-  description: 'Design your own mandala or sacred geometry online in minutes. Free, no signup, no watermark. Export coloring pages, stickers, or cut-ready SVG and DXF for Cricut, laser and plasma.',
+  description: 'Make a mandala or sacred geometry online. Free, no signup, no watermark. Export coloring pages, stickers, or cut-ready SVG and DXF for Cricut, laser and plasma.',
   maker: true,
   schema: [
     {
@@ -538,6 +596,7 @@ ${stickerTiles(STICKER_TEMPLATES.slice(0, 5))}
 <li><strong>Shape it.</strong> Add rings of petals, dots and scallops, change line weight, and fill sections with color.</li>
 <li><strong>Download it.</strong> Save a coloring page, a print, or a cut file in the format you need.</li>
 </ol>
+<p>Prefer paper and pencil? Follow the guide to <a href="/learn/how-to-draw-a-mandala/">drawing a mandala by hand</a>, step by step.</p>
 
 <h2>Start from a template</h2>
 <p>When a blank circle feels like too much, open a template and change it ring by ring. There are more in <a href="/templates/">all the templates</a>.</p>
@@ -629,6 +688,7 @@ const exportPages = [
 <li><strong>Use a stencil for paint.</strong> The Stencil option cuts the design out of a solid disc, which works for stencil vinyl and painting. Closed areas fall out of a stencil, so the maker counts them for you.</li>
 <li><strong>Loose pieces are fine on vinyl.</strong> Transfer tape holds every piece in place, so a design that cuts into many pieces still works as a vinyl decal. Paper, wood and metal need one connected piece.</li>
 </ul>
+<p>Read the full guide: <a href="/learn/how-to-cut-a-mandala-on-cricut/">How to cut a mandala on a Cricut</a>.</p>
 <h2>Print then cut stickers</h2>
 <p>The <a href="/mandala-stickers/">sticker maker</a> makes a round die-cut sticker: your mandala on a disc, a white border, bleed beyond the cut, and the cut line as a magenta hairline on its own layer named CutContour. Print then cut workflows and many sticker printers look for that layer. Or download the sticker PNG at 300 dpi for printers that trace the edge of the image. Add a name in the open center for gifts and party favors.</p>
 <p>Prefer a ready-made design? Start from the <a href="/templates/flower-mandala/">flower mandala</a>, the <a href="/templates/flower-of-life-mandala/">Flower of Life</a> or the <a href="/templates/name-mandala/">name mandala</a> template.</p>`,
@@ -767,16 +827,16 @@ console.log('Sacred geometry cut pieces:', SG_FIGURES.map(f => `${f.slug} ${f.pi
   write('img/og/sacred-geometry.png', png(socialCard(sgD, 'Sacred Geometry Generator', 'Flower of Life, Metatron\'s Cube and more'), 1200));
   page({
     path: '/sacred-geometry/',
-    title: "Free Sacred Geometry Generator: Flower of Life, Metatron's Cube SVG and DXF",
+    title: 'Free Sacred Geometry Generator: Flower of Life SVG and DXF',
     ogTitle: 'Free Sacred Geometry Generator',
-    description: "Make sacred geometry online: the Flower of Life, Seed of Life, Metatron's Cube, golden spirals and more. Free SVG, DXF, PDF and sticker downloads, no signup.",
+    description: "Make sacred geometry online: the Flower of Life, Seed of Life, Metatron's Cube, golden spirals and more. Free SVG, DXF, PDF and sticker files, no signup.",
     maker: true, ogImage: '/img/og/sacred-geometry.png',
     crumbs: [['/', 'Home'], ['/sacred-geometry/', 'Sacred geometry']],
     sitemapImages: SG_FIGURES.map(f => `${SITE}/img/sacred-geometry/${f.slug}.svg`),
     schema: [faqSchema(faq), {
       '@context': 'https://schema.org', '@type': 'ItemList', name: 'Free sacred geometry downloads',
       itemListElement: SG_FIGURES.map((f, i) => ({ '@type': 'ListItem', position: i + 1, item: {
-        '@type': 'ImageObject', name: f.name, description: f.about, contentUrl: `${SITE}/img/sacred-geometry/${f.slug}.svg`, creator: ORG, isAccessibleForFree: true,
+        '@type': 'ImageObject', name: f.name, description: f.about, contentUrl: `${SITE}/img/sacred-geometry/${f.slug}.svg`, creator: ORG, isAccessibleForFree: true, ...IMAGE_RIGHTS,
       } })),
     }],
     body: `<div class="wrap hero"><h1>Sacred Geometry Generator</h1><p class="lede">Build the Flower of Life, Metatron's Cube, golden spirals and more, ring them with petals, leave room for a name, then download them to print, cut or stick. Free, with no signup.</p></div>
@@ -822,7 +882,7 @@ ${templateTiles(null, SACRED_TEMPLATES)}
   write('img/og/mandala-frames.png', png(socialCard(frD, 'Mandala Frames for Words', 'Names, quotes and dates. Free.'), 1200));
   page({
     path: '/mandala-frames/',
-    title: 'Mandala Frames With an Open Center for Names, Quotes and Monograms',
+    title: 'Free Mandala Frames for Names, Quotes and Monograms',
     ogTitle: 'Mandala Frames for Words',
     description: 'Free mandala frames with an open center for a name, a quote or a monogram. Bold, simple designs for wall tags, signs and cards. Download SVG, PNG, PDF or DXF.',
     maker: true, ogImage: '/img/og/mandala-frames.png',
@@ -879,14 +939,14 @@ ${sizes.map(({ t, share }) => `<tr><td><a href="/templates/${t.slug}/">${esc(t.n
     path: '/mandala-stickers/',
     title: 'Free Mandala Sticker Maker: Die-Cut Sticker SVG and PNG',
     ogTitle: 'Mandala Sticker Maker',
-    description: 'Make round mandala stickers online. Free die-cut sticker SVG with bleed and a CutContour cut line, or a 300 dpi PNG for sticker printers. Add a name in an open center.',
+    description: 'Make round mandala stickers online: a free die-cut SVG with bleed and a CutContour cut line, or a 300 dpi PNG for sticker printers. Add a name in the center.',
     maker: true, ogImage: '/img/og/mandala-stickers.png',
     crumbs: [['/', 'Home'], ['/mandala-stickers/', 'Stickers']],
     sitemapImages: [...STICKER_TEMPLATES, ...WORD_STICKERS].map(t => `${SITE}/img/stickers/${t.slug}.svg`),
     schema: [faqSchema(faq), {
       '@context': 'https://schema.org', '@type': 'ItemList', name: 'Free mandala sticker downloads',
       itemListElement: STICKER_TEMPLATES.map((t, i) => ({ '@type': 'ListItem', position: i + 1, item: {
-        '@type': 'ImageObject', name: `${t.name} sticker`, description: t.blurb, contentUrl: `${SITE}/img/stickers/${t.slug}.svg`, creator: ORG, isAccessibleForFree: true,
+        '@type': 'ImageObject', name: `${t.name} sticker`, description: t.blurb, contentUrl: `${SITE}/img/stickers/${t.slug}.svg`, creator: ORG, isAccessibleForFree: true, ...IMAGE_RIGHTS,
       } })),
     }],
     body: `<div class="wrap hero"><h1>Mandala Sticker Maker</h1><p class="lede">Turn any mandala into a round die-cut sticker. Download an SVG with bleed and a CutContour cut line for print then cut, or a 300 dpi PNG for sticker printers. Free, with no signup.</p></div>
@@ -951,15 +1011,15 @@ for (const t of TEMPLATES) {
   const d = templateDesign(t.slug);
   page({
     path: `/templates/${t.slug}/`,
-    title: `${t.name} Template: Free to Edit, Print and Cut`,
-    description: `${t.blurb} Edit it free and download as PNG, PDF, SVG or DXF.`.slice(0, 300),
+    title: fitText(60, `${t.name} Template: Free to Edit, Print and Cut`, `${t.name} Template: Free to Print and Cut`),
+    description: fitText(160, `${t.blurb} Edit it free and download as PNG, PDF, SVG or DXF.`, `${t.blurb} Free to edit, as PNG, PDF, SVG or DXF.`, `${t.blurb} Free to edit and download.`, t.blurb),
     maker: true,
     ogImage: `/img/og/${t.slug}.png`, ogImageAlt: `${t.name} template`,
     crumbs: [['/', 'Home'], ['/templates/', 'Templates'], [`/templates/${t.slug}/`, t.name]],
     sitemapImages: [`${SITE}/img/templates/${t.slug}.svg`],
     schema: [{
       '@context': 'https://schema.org', '@type': 'ImageObject', name: `${t.name} template`, description: t.blurb,
-      contentUrl: `${SITE}/img/templates/${t.slug}.svg`, creator: ORG, isAccessibleForFree: true,
+      contentUrl: `${SITE}/img/templates/${t.slug}.svg`, creator: ORG, isAccessibleForFree: true, ...IMAGE_RIGHTS,
     }],
     body: `<div class="wrap hero"><h1>${esc(t.name)} Template</h1><p class="lede">${esc(t.blurb)}</p></div>
 ${maker({ template: t.slug })}
@@ -992,49 +1052,75 @@ page({
   description: 'Free printable mandala coloring pages in Letter and A4 PDF, from easy designs for kids to intricate pages for adults. Open any page in the maker to change it.',
   crumbs: [['/', 'Home'], ['/coloring-pages/', 'Coloring pages']],
   ogImage: `/img/pins/${coloring[8].lv.key}-${coloring[8].slug}.png`,
-  body: `<div class="wrap hero"><h1>Free Printable Mandala Coloring Pages</h1><p class="lede">Print any of these at US Letter or A4, or open it in the maker to change it first. Free for personal and classroom use.</p></div>
+  body: `<div class="wrap hero"><h1>Free Printable Mandala Coloring Pages</h1><p class="lede">Print any of these at US Letter or A4, or open it in the maker to change it first. Free to use, including on things you sell.</p></div>
 <div class="wrap section">${LEVELS.map(lv => `<h2><a href="/coloring-pages/${lv.key}/">${esc(lv.title)}</a></h2><p>${esc(lv.blurb)}</p>
 <ul class="tiles">${coloring.filter(c => c.lv === lv).slice(0, 4).map(c => `<li><a href="/coloring-pages/${lv.key}/${c.slug}/"><img src="/img/coloring-pages/${lv.key}/${c.slug}.svg" alt="${esc(c.name)} coloring page" width="300" height="300" loading="lazy"><span>${esc(c.name)}</span></a></li>`).join('')}</ul>
 <p><a href="/coloring-pages/${lv.key}/">See all ${lv.name.toLowerCase()} pages</a></p>`).join('')}
 <div class="closing"><h2>Make your own coloring page</h2><p>Pick a level of detail, press Surprise me, and print it.</p><p><a class="btn" href="/coloring-page-maker/">Open the coloring page maker</a></p></div>
 </div>`,
 });
+// "6 to 12" for a list of numbers, or "8" when they're all the same. range([6, 12], '-fold') is "6- to 12-fold".
+const range = (vals, unit = '') => {
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  return lo === hi ? `${lo}${unit}` : `${lo}${unit && '-'} to ${hi}${unit}`;
+};
 for (const lv of LEVELS) {
   const items = coloring.filter(c => c.lv === lv);
+  const summary = `These ${items.length} pages have ${range(items.map(c => c.n), '-fold')} symmetry, ${range(items.map(c => c.facts.rings.length))} rings of shapes${lv.level === 'sacred' ? ' around the figure' : ''}, and about ${range(items.map(c => c.facts.spaces))} spaces to color.`;
   page({
-    path: `/coloring-pages/${lv.key}/`, title: `${lv.title}: Free Printable PDF`,
-    description: `${lv.blurb} Free printable mandala coloring pages in Letter and A4 PDF.`,
+    path: `/coloring-pages/${lv.key}/`, title: fitText(60, `${lv.title}: Free Printable PDF`, `${lv.title} (Free PDF)`),
+    description: fitText(160, `${lv.blurb} Free printable mandala coloring pages in Letter and A4 PDF.`, `${lv.blurb} Free printable Letter and A4 PDFs.`, lv.blurb),
     crumbs: [['/', 'Home'], ['/coloring-pages/', 'Coloring pages'], [`/coloring-pages/${lv.key}/`, lv.name]],
     ogImage: `/img/pins/${lv.key}-${items[0].slug}.png`,
     body: `<div class="wrap hero"><h1>${esc(lv.title)}</h1><p class="lede">${esc(lv.blurb)} Print at Letter or A4, or open one in the maker to change it.</p></div>
-<div class="wrap section"><ul class="tiles">${items.map(c => `<li><a href="/coloring-pages/${lv.key}/${c.slug}/"><img src="/img/coloring-pages/${lv.key}/${c.slug}.svg" alt="${esc(c.name)} coloring page" width="300" height="300" loading="lazy"><span>${esc(c.name)}</span><small>${c.n}-fold symmetry</small></a></li>`).join('')}</ul>
-<p>Other levels: ${LEVELS.filter(x => x !== lv).map(x => `<a href="/coloring-pages/${x.key}/">${esc(x.title)}</a>`).join(' · ')}</p></div>`,
+<div class="wrap section"><ul class="tiles">${items.map(c => `<li><a href="/coloring-pages/${lv.key}/${c.slug}/"><img src="/img/coloring-pages/${lv.key}/${c.slug}.svg" alt="${esc(c.name)} coloring page" width="300" height="300" loading="lazy"><span>${esc(c.name)}</span><small>${c.n}-fold, about ${c.facts.spaces} spaces</small></a></li>`).join('')}</ul></div>
+<div class="wrap section narrow article">
+<h2>About these pages</h2>
+<p>${esc(lv.about)} ${summary}</p>
+<h2>Tips for coloring them</h2>
+<ul>${lv.tips.map(t => `<li>${t}</li>`).join('')}</ul>
+<p>Other levels: ${LEVELS.filter(x => x !== lv).map(x => `<a href="/coloring-pages/${x.key}/">${esc(x.title)}</a>`).join(' · ')}</p>
+</div>`,
   });
   items.forEach((c, i) => {
     const base = `/coloring-pages/${lv.key}/${c.slug}`;
-    const others = items.filter(x => x !== c).slice(0, 4);
+    // The next four around the level, so every page is linked from four others.
+    const others = [1, 2, 3, 4].map(k => items[(i + k) % items.length]);
+    const f = c.facts;
+    // The figure's own entry on /sacred-geometry/, or its plain version when this variation has none.
+    const fig = f.figure && (SG_FIGURES.find(x => x.shape === f.figure.shape && x.v === f.figure.v) || SG_FIGURES.find(x => x.shape === f.figure.shape && x.v === 1));
+    const contents = f.figure ? `At the center ${f.figure.are ? 'are' : 'is'} ${f.figure.noun} (${f.figure.variation}), ringed by ${ringList(f.rings)}.`
+      : `From the center out: ${ringList(f.rings)}, inside a plain outer ring.`;
+    const level = lv.key === 'medium' ? '' : `${lv.name.toLowerCase()} `;
     page({
       path: base + '/',
-      title: `${c.name} Coloring Page: Free Printable PDF`,
-      description: `A free printable ${lv.key === 'medium' ? '' : lv.name.toLowerCase() + ' '}mandala coloring page with ${c.n}-fold symmetry. Download the PDF at Letter or A4, or edit it in the free mandala maker.`,
+      title: fitText(60, `${c.name}: Free Printable Coloring Page`, `${c.name} Coloring Page (Free PDF)`),
+      description: f.figure
+        ? fitText(160, `${c.name}: a free printable coloring page with ${f.figure.noun} at the center, ${c.n}-fold symmetry and about ${f.spaces} spaces to color. Letter or A4 PDF.`,
+          `${c.name}: a free printable coloring page with ${f.figure.noun} at the center and about ${f.spaces} spaces to color.`)
+        : fitText(160, `${c.name}: a free printable coloring page with ${c.n}-fold symmetry, rings of ${andList(f.kinds.slice(0, 3))}, and about ${f.spaces} spaces to color. Letter or A4 PDF.`,
+          `${c.name}: a free printable coloring page with ${c.n}-fold symmetry and about ${f.spaces} spaces to color. Letter or A4 PDF.`),
       crumbs: [['/', 'Home'], ['/coloring-pages/', 'Coloring pages'], [`/coloring-pages/${lv.key}/`, lv.name], [base + '/', c.name]],
       ogImage: `/img/pins/${lv.key}-${c.slug}.png`, ogImageAlt: `${c.name} coloring page`,
       sitemapImages: [`${SITE}/img${base}.svg`],
       schema: [{
         '@context': 'https://schema.org', '@type': 'ImageObject', name: `${c.name} coloring page`, contentUrl: `${SITE}/img${base}.svg`,
-        description: `Printable mandala coloring page with ${c.n}-fold symmetry`, creator: ORG, isAccessibleForFree: true,
+        description: `Printable ${level}mandala coloring page with ${c.n}-fold symmetry and about ${f.spaces} spaces to color`, creator: ORG, isAccessibleForFree: true, ...IMAGE_RIGHTS,
       }],
-      body: `<div class="wrap hero"><h1>${esc(c.name)} Coloring Page</h1><p class="lede">A free printable mandala with ${c.n}-fold symmetry. ${esc(lv.blurb)}</p></div>
+      body: `<div class="wrap hero"><h1>${esc(c.name)} Coloring Page</h1><p class="lede">A free printable ${level}mandala with ${c.n}-fold symmetry and about ${f.spaces} spaces to color.</p></div>
 <div class="wrap section"><div class="two-col">
 <div class="preview"><img src="/img${base}.svg" alt="${esc(c.name)} coloring page" width="520" height="520"></div>
 <div>
 <h2 style="margin-top:0">Download and print</h2>
 <div class="cta-row"><a class="btn" href="/files${base}-letter.pdf" download>PDF, US Letter</a><a class="btn ghost" href="/files${base}-a4.pdf" download>PDF, A4</a></div>
-<p>Print at 100 percent scale. Heavier paper takes markers without bleeding through.</p>
+<p>Print at 100 percent scale. The lines print about ${f.lineMM.toFixed(1)} mm wide, ${lineAdvice(f.lineMM)}.</p>
+<h2>What's in it</h2>
+<p>${esc(contents)}</p>
+${fig ? `<p>${esc(fig.about)} Download the figure on its own from the <a href="/sacred-geometry/">sacred geometry</a> page.</p>` : ''}
 <h2>Change it first</h2>
-<p>Open this mandala in the maker to change the symmetry, thicken the lines, remove rings or add your own drawing, then print your version.</p>
+<p>Open it in the maker to change the symmetry, thicken the lines or add your own drawing.</p>
 <p><a class="btn ghost" href="${editLink(c.d)}">Edit this mandala</a></p>
-<p class="meta">Free for personal and classroom use.</p>
+<p class="meta">Free to use, including on things you sell. See the <a href="/license/">license</a>.</p>
 </div></div>
 <h2>More ${esc(lv.name.toLowerCase())} mandalas</h2>
 <ul class="tiles">${others.map(o => `<li><a href="/coloring-pages/${lv.key}/${o.slug}/"><img src="/img/coloring-pages/${lv.key}/${o.slug}.svg" alt="${esc(o.name)} coloring page" width="300" height="300" loading="lazy"><span>${esc(o.name)}</span></a></li>`).join('')}</ul>
@@ -1086,6 +1172,24 @@ page({
 </div>`,
 });
 page({
+  path: '/license/', title: 'License: Free to Use, Including on Things You Sell',
+  description: 'Every design and file from Super Mandala Lab is free to use, including on things you sell: coloring pages, templates, stickers, cut files and maker designs.',
+  crumbs: [['/', 'Home'], ['/license/', 'License']],
+  body: `<div class="narrow article"><div class="hero"><h1>License</h1><p class="meta">Updated November 3, 2026</p></div>
+<p>Everything you download from Super Mandala Lab is free to use, including on things you sell. That covers:</p>
+<ul>
+<li>Mandalas you make in the maker, in every format</li>
+<li>The ready-made <a href="/coloring-pages/">coloring pages</a></li>
+<li>The <a href="/templates/">templates</a> and the <a href="/mandala-frames/">frames for words</a></li>
+<li>The <a href="/mandala-stickers/">sticker files</a></li>
+<li>The <a href="/sacred-geometry/">sacred geometry</a> figures and cut files</li>
+</ul>
+<p>Print them, color them, cut them, and sell what you make with them, such as prints, stickers, signs, cards and cut pieces. There's no fee and no watermark, and you don't need an account.</p>
+<h2>Questions</h2>
+<p>Ask us through <a href="https://superfablab.com">SuperFabLab</a>.</p>
+</div>`,
+});
+page({
   path: '/privacy/', title: 'Privacy at Super Mandala Lab',
   description: 'Super Mandala Lab needs no account and keeps your designs in your own browser.',
   crumbs: [['/', 'Home'], ['/privacy/', 'Privacy']],
@@ -1107,9 +1211,11 @@ page({
 });
 
 // ---------- crawl files ----------
+// Each page's lastmod is the day its content last changed, not the day of the build.
+const LASTMOD = lastmodDates(path.join(here, 'lastmod.json'), SITEMAP, TODAY);
 const smap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${SITEMAP.map(u => `<url><loc>${u.loc}</loc><lastmod>${TODAY}</lastmod>${u.img.map(i => `<image:image><image:loc>${i}</image:loc></image:image>`).join('')}</url>`).join('\n')}
+${SITEMAP.map(u => `<url><loc>${SITE + u.path}</loc><lastmod>${LASTMOD[u.path]}</lastmod>${u.img.map(i => `<image:image><image:loc>${i}</image:loc></image:image>`).join('')}</url>`).join('\n')}
 </urlset>
 `;
 write('sitemap.xml', smap);
@@ -1169,3 +1275,7 @@ let total = 0, count = 0; // counted after optimizing
 const walk = dir => { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, f.name); if (f.isDirectory()) walk(p); else { total += fs.statSync(p).size; count++; } } };
 walk(DIST);
 console.log(`Built ${count} files, ${(total / 1024 / 1024).toFixed(2)} MB, ${SITEMAP.length} pages in sitemap`);
+
+const seo = checkSite(DIST, SITE);
+printReport(seo);
+if (seo.errors.length) process.exitCode = 1;

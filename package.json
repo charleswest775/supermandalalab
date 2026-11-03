@@ -6,6 +6,7 @@
   "description": "Super Mandala Lab: free mandala maker at supermandalalab.com",
   "scripts": {
     "build": "node src/build.mjs",
+    "seo": "node src/seo-check.mjs",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {

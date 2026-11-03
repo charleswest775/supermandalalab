@@ -14,14 +14,14 @@ The GitHub repo https://github.com/charleswest775/supermandalalab is the source 
    If git reports "dubious ownership" in the shared folder, run `git config --global --add safe.directory '*'` once.
    Python 3 with Pillow is also needed for PNG compression. Check with `python3 -c "import PIL"`, and run `python3 -m pip install pillow` if it's missing.
 3. Edit the source:
-   - Templates are the `TEMPLATES` list in `src/js/core.js`. Each needs a slug, name, blurb, an optional `more` HTML string and a `make()` function.
+   - Templates are the `TEMPLATES` list in `src/js/core.js`. Each needs a slug, name, blurb, a `more` HTML string (two short paragraphs about the design, so its page has copy of its own) and a `make()` function.
    - Guides are the `ARTICLES` list in `src/content.mjs`. Each needs slug, date, title, short, description, template and body.
    - Pages, the sitemap and the schema are in `src/build.mjs`.
 4. Build:
    ```
    node src/build.mjs /home/user/sml-deps
    ```
-   This rebuilds `dist/` and prints the file and sitemap counts. Before committing, preview any new template by rendering it to a PNG and looking at it.
+   This rebuilds `dist/`, prints the file and sitemap counts, then runs the SEO check. Fix any errors it reports before committing; warnings are for judgment. Before committing, preview any new template by rendering it to a PNG and looking at it.
 5. Commit and push to `main`:
    ```
    git add -A && git commit -m "Add <what changed>" && git push origin main
@@ -32,6 +32,7 @@ The GitHub repo https://github.com/charleswest775/supermandalalab is the source 
 
 - `dist/google114b1fb682c7dd8a.html` is the Search Console verification file, written by `build.mjs`. Removing it unverifies the site.
 - `dist/version.txt` is the build stamp, written by `build.mjs`.
+- `src/lastmod.json` holds the date each page's content last changed, for the sitemap. The build updates it; commit it with `dist/` and don't edit it by hand.
 - `wrangler.jsonc` lists both custom domains. Leave them in, so a deploy keeps supermandalalab.com and www attached.
 - The www-to-apex redirect and Always Use HTTPS are zone settings in Cloudflare, not part of this repo.
 - Cloudflare Web Analytics is injected automatically, so the site needs no script tag for it.
@@ -41,7 +42,7 @@ The GitHub repo https://github.com/charleswest775/supermandalalab is the source 
 
 Once a week:
 1. `git pull`, then add one guide to `ARTICLES` and, if useful, one template to `TEMPLATES`, aimed at a search people make ("mandala svg for cricut", "dot mandala template" and the like).
-2. Build, preview new templates, commit and push. The site updates by itself.
+2. Build (the SEO check must report no errors), preview new templates, commit and push. The site updates by itself.
 3. Check `version.txt` and the new pages, then request indexing for them in Search Console.
 
 ## Manual fallback
