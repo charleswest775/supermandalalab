@@ -674,6 +674,20 @@ export function stickerLineMM(d, sizeMM = 76.2, borderMM = 2.54) {
   return Math.min(...paths.map(p => p.w)) * k;
 }
 
+// ---------- Share card ----------
+
+// A picture to text or post, in pixels: the design on its background, square (1080 x 1080) or as a phone
+// story (1080 x 1920). credit: a small supermandalalab.com line under the design.
+export function cardSVG(d, o = {}) {
+  const W = 1080, H = o.story ? 1920 : 1080;
+  const bg = d.bg === 'transparent' ? '#ffffff' : d.bg;
+  const size = o.story || !o.credit ? 1000 : 940;
+  const y = o.story ? (H - size) / 2 - 40 : 40;
+  const art = designSVG(d, { paths: o.paths, width: size, noBg: true, attrs: ` x="${(W - size) / 2}" y="${y}"` });
+  const credit = o.credit ? `<text x="${W / 2}" y="${o.story ? H - 110 : H - 42}" text-anchor="middle" font-family="${escapeXML(FONT_FAMILY.sans)}" font-size="30" fill="${d.ink}" fill-opacity="0.6">supermandalalab.com</text>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="${bg}"/>${art}${credit}</svg>`;
+}
+
 export function escapeXML(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

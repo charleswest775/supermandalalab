@@ -20,8 +20,8 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="/css/site.css?v=71cfa20754">
-<script type="module" src="/js/maker.js?v=5721e4b273"></script>
+<link rel="stylesheet" href="/css/site.css?v=58c439eeb1">
+<script type="module" src="/js/maker.js?v=d40da3e31f"></script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"ImageObject","name":"Boho Mandala template","description":"Arches, rays and dot borders in a half-sun boho style, made for wall decals, tote bags and nursery prints.","contentUrl":"https://supermandalalab.com/img/templates/boho-mandala.svg","creator":{"@context":"https://schema.org","@type":"Organization","name":"Super Mandala Lab","url":"https://supermandalalab.com/","logo":"https://supermandalalab.com/icon-512.png","parentOrganization":{"@type":"Organization","name":"SuperFabLab","url":"https://superfablab.com"}},"isAccessibleForFree":true}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://supermandalalab.com/"},{"@type":"ListItem","position":2,"name":"Templates","item":"https://supermandalalab.com/templates/"},{"@type":"ListItem","position":3,"name":"Boho Mandala","item":"https://supermandalalab.com/templates/boho-mandala/"}]}</script>
 </head>
@@ -29,7 +29,7 @@
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-head"><div class="wrap">
 <a class="brand" href="/"><svg viewBox="-50 -50 100 100" aria-hidden="true"><g fill="none" stroke="#d9622b" stroke-width="5" stroke-linejoin="round"><path transform="rotate(0)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(45)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(90)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(135)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(180)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(225)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(270)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/><path transform="rotate(315)" d="M0 -6C10 -18 10 -34 0 -46C-10 -34 -10 -18 0 -6Z"/></g><circle r="7" fill="#3b3480"/></svg><span>Super Mandala Lab</span></a>
-<nav class="nav" aria-label="Main"><a href="/coloring-page-maker/">Coloring pages</a><a href="/mandala-stickers/">Stickers</a><a href="/mandala-frames/">Words</a><a href="/svg-for-cricut/">Cut files</a><a href="/templates/" aria-current="true">Free designs</a><a href="/learn/">Learn</a></nav>
+<nav class="nav" aria-label="Main"><a href="/coloring-page-maker/">Coloring pages</a><a href="/kindness-mandala/">Kind messages</a><a href="/mandala-stickers/">Stickers</a><a href="/mandala-frames/">Words</a><a href="/svg-for-cricut/">Cut files</a><a href="/templates/" aria-current="true">Free designs</a><a href="/learn/">Learn</a></nav>
 </div></header>
 <main id="main">
 <div class="wrap"><nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/templates/">Templates</a> › <span>Boho Mandala</span></nav></div>
@@ -110,12 +110,19 @@
       <label class="mk-check"><input type="checkbox" id="mk-st-plain"> Disc only, with no border or cut line</label>
       <div class="mk-inline"><button type="button" id="mk-dl-st-svg" class="mk-primary">Sticker SVG</button><button type="button" id="mk-dl-st-png">Sticker PNG</button></div>
       <p class="mk-hint" style="margin:0">The SVG has bleed and a cut line on its own CutContour layer. The PNG is 300 dpi and transparent outside the border, for sticker printers.</p>
-    </div><div class="mk-dl"><h3>Share</h3><p class="mk-hint" style="margin:0">Copy a link that opens this mandala for anyone.</p><button type="button" id="mk-share">Copy share link</button></div>
+    </div><div class="mk-dl" id="mk-share-box"><h3>Share <small>text it, post it, send it</small></h3>
+      <button type="button" id="mk-share" class="mk-primary">Share the picture and link</button>
+      <div class="mk-share-links"><a data-share="sms">Text</a><a data-share="whatsapp" target="_blank" rel="noopener">WhatsApp</a><a data-share="facebook" target="_blank" rel="noopener">Facebook</a><a data-share="x" target="_blank" rel="noopener">X</a><a data-share="email">Email</a><button type="button" id="mk-copy">Copy link</button></div>
+      <div class="mk-inline"><select id="mk-card-size" aria-label="Picture shape"><option value="square">Square, for posts and texts</option><option value="story">Story, for Instagram and WhatsApp</option></select><button type="button" id="mk-dl-card">Save picture</button></div>
+      <label class="mk-check"><input type="checkbox" id="mk-card-credit" checked> Add supermandalalab.com under it</label>
+      <p class="mk-hint" style="margin:0">The link opens your mandala on any phone or computer, ready to save or print and color. The design and words travel inside the link, so Super Mandala Lab never stores them.</p>
+      <p class="mk-hint mk-kind-nudge" style="margin:0">Or <a id="mk-kind-link" href="/kindness-mandala/">put a kind message in the middle</a> and send it to someone.</p>
+    </div>
   </div>
 </div>
 <div class="mk-toast" id="mk-toast" role="status" aria-live="polite"></div>
 </section>
-<div class="wrap use-for"><span>Use this design for</span><a class="btn ghost" href="/coloring-page-maker/?template=boho-mandala">Coloring page</a><a class="btn ghost" href="/mandala-stickers/?template=boho-mandala">Sticker</a><a class="btn ghost" href="/mandala-frames/?template=boho-mandala">Words in the center</a><a class="btn ghost" href="/svg-for-cricut/?template=boho-mandala">Cut file</a></div>
+<div class="wrap use-for"><span>Use this design for</span><a class="btn ghost" href="/coloring-page-maker/?template=boho-mandala">Coloring page</a><a class="btn ghost" href="/kindness-mandala/?template=boho-mandala">Kind message</a><a class="btn ghost" href="/mandala-stickers/?template=boho-mandala">Sticker</a><a class="btn ghost" href="/mandala-frames/?template=boho-mandala">Words in the center</a><a class="btn ghost" href="/svg-for-cricut/?template=boho-mandala">Cut file</a></div>
 <div class="wrap section">
 <div class="two-col">
 <div>
@@ -138,7 +145,7 @@
 <footer class="site-foot"><div class="wrap">
 <div class="cols">
 <div><h4>Super Mandala Lab</h4><p>A free mandala maker. Draw, print and cut your own mandalas, with no signup and no watermark.</p></div>
-<div><h4>Make</h4><ul><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li><li><a href="/">The full mandala maker</a></li></ul></div>
+<div><h4>Make</h4><ul><li><a href="/coloring-page-maker/">Coloring page maker</a></li><li><a href="/kindness-mandala/">Kind message mandalas</a></li><li><a href="/mandala-stickers/">Mandala sticker maker</a></li><li><a href="/mandala-frames/">Mandala frames for words</a></li><li><a href="/svg-for-cricut/">Mandala SVG for Cricut</a></li><li><a href="/dxf-for-laser-and-plasma/">Mandala DXF for laser and plasma</a></li><li><a href="/">The full mandala maker</a></li></ul></div>
 <div><h4>Free designs</h4><ul><li><a href="/templates/">Mandala templates</a></li><li><a href="/sacred-geometry/">Sacred geometry</a></li><li><a href="/coloring-pages/sacred-geometry/">Sacred geometry coloring pages</a></li><li><a href="/coloring-pages/">Mandala coloring pages</a></li><li><a href="/coloring-pages/easy/">Easy coloring pages</a></li><li><a href="/coloring-pages/intricate/">Intricate coloring pages</a></li></ul></div>
 <div><h4>Learn</h4><ul><li><a href="/learn/what-is-a-mandala/">What is a mandala?</a></li><li><a href="/learn/how-to-draw-a-mandala/">How to draw a mandala</a></li><li><a href="/learn/how-to-laser-or-plasma-cut-a-mandala/">Laser and plasma cutting a mandala</a></li><li><a href="/learn/how-to-cut-a-mandala-on-cricut/">Cutting a mandala on a Cricut</a></li><li><a href="/about/">About</a></li><li><a href="/privacy/">Privacy</a></li></ul></div>
 </div>
