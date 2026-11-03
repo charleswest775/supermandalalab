@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Super Mandala Lab: free mandala maker at supermandalalab.com",
   "scripts": {
+    "live-check": "node src/live-check.mjs",
     "build": "node src/build.mjs",
     "deploy": "wrangler deploy"
   },

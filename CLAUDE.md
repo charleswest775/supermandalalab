@@ -43,6 +43,12 @@ Cloudflare Workers Builds watches `main`. Every push to `main` goes live in abou
 branch otherwise. Afterwards, https://supermandalalab.com/version.txt should match
 `dist/version.txt`.
 
+After each push to `main`, the GitHub Actions workflow `.github/workflows/after-deploy.yml` waits
+for that match, runs the live check (`npm run live-check`, which you can also run by hand), pings
+IndexNow and resubmits the sitemap to Google. DEPLOY.md has the details and the one-time Google
+setup. Leave IndexNow and the Search Console API to the workflow; `node src/indexnow.mjs --dry-run`
+shows what it would send.
+
 ## Sharing main with Duet
 
 - Run `git pull --rebase` before starting and again before building.
@@ -63,6 +69,7 @@ the GitHub noreply address, which is set in this clone's git config.
 
 Keep these in `dist/`:
 - `google114b1fb682c7dd8a.html` (Search Console verification)
+- `f7a309703ca332a5581d2a331502d891.txt` (IndexNow key, also in `src/indexnow.mjs`)
 - `version.txt`
 
 Keep both custom domains in `wrangler.jsonc`.

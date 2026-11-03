@@ -1,0 +1,59 @@
+# After each deploy of supermandalalab.com: waits until Cloudflare serves the pushed build, checks the
+# live site, tells IndexNow which pages changed and resubmits the sitemap to Google. See DEPLOY.md.
+name: After deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md'] # a docs-only push deploys the same site
+  workflow_dispatch: # run by hand: IndexNow gets every page, not just the changed ones
+
+permissions:
+  contents: read
+
+# A newer push replaces the build this run waits for, so the newer run does the work.
+concurrency:
+  group: after-deploy
+  cancel-in-progress: true
+
+jobs:
+  after-deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Wait for the deploy
+        run: |
+          want=$(cat dist/version.txt)
+          deadline=$((SECONDS + 300))
+          while :; do
+            got=$(curl -fsS --max-time 10 "https://supermandalalab.com/version.txt?run=$GITHUB_RUN_ID-$SECONDS" || true)
+            if [ "$got" = "$want" ]; then echo "Live: $got"; break; fi
+            if [ $SECONDS -ge $deadline ]; then
+              echo "::error::After 5 minutes supermandalalab.com still serves '${got:-nothing}', not this commit's '$want'. Check the Worker's Deployments in the Cloudflare dashboard."
+              exit 1
+            fi
+            echo "Live is '${got:-no answer}'; waiting for '$want'"
+            sleep 10
+          done
+
+      - name: Live smoke check
+        id: live
+        run: node src/live-check.mjs
+
+      - name: IndexNow ping
+        run: node src/indexnow.mjs ${{ github.event_name == 'workflow_dispatch' && '--all' || '' }}
+
+      # Runs even if IndexNow failed, as long as the live site checked out.
+      - name: Resubmit the sitemap to Google
+        if: ${{ !cancelled() && steps.live.outcome == 'success' }}
+        env:
+          GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+        run: node src/gsc-sitemap.mjs
